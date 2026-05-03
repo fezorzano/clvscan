@@ -931,30 +931,22 @@ function renderOportunidades(ops) {
 }
 
 // ==================== COMUNICACIÓN CON GOOGLE SHEETS ====================
-async function llamarSheets(payload) {
+async function llamarSheets(params) {
   if (!sheetsConectado) return null;
   try {
-    const res = await fetch(WEB_APP_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const query = Object.entries(params)
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+      .join("&");
+    const res = await fetch(`${WEB_APP_URL}?${query}`);
     return await res.json();
-  } catch (e) {
+  } catch(e) {
     console.warn("Error conectando con Sheets:", e.message);
     return null;
   }
 }
 
 async function obtenerOportunidadesSheets() {
-  if (!sheetsConectado) return null;
-  try {
-    const res = await fetch(`${WEB_APP_URL}?accion=obtenerOportunidades`);
-    return await res.json();
-  } catch(e) {
-    console.warn("Error obteniendo oportunidades:", e.message);
-    return null;
-  }
+  return await llamarSheets({ accion: "obtenerOportunidades" });
 }
 
 // ==================== TRACKER ====================
@@ -1012,7 +1004,7 @@ async function registrarApuesta() {
   // Sincronizar con Google Sheets en background
   if (sheetsConectado) {
     const resp = await llamarSheets({
-      accion: 'registrarApuesta',
+      accion: "registrarApuesta",
       deporte, evento, seleccion,
       cuotaCoolbet: coolbet,
       cuotaPinnacle: pinnacle,
@@ -1046,11 +1038,11 @@ async function marcarResultado(id, resultado) {
   // Sincronizar resultado con Google Sheets
   if (sheetsConectado && ap.sheetsId) {
     const resp = await llamarSheets({
-      accion: 'marcarResultado',
+      accion: "marcarResultado",
       id: ap.sheetsId,
-      resultado: resultado === 'ganada' ? 'G' : 'P',
+      resultado: resultado === "ganada" ? "G" : "P",
     });
-    if (resp?.ok) mostrarToast('✅ Resultado sincronizado con Sheets');
+    if (resp?.ok) mostrarToast("✅ Resultado sincronizado con Sheets");
   }
 }
 
