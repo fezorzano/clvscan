@@ -726,8 +726,7 @@ const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbybKwaeAuGaHzZwzmPP
 const sheetsConectado = true;
 
 // ==================== ESTADO ====================
-// Las apuestas se guardan localmente Y en Google Sheets (si está configurado)
-let apuestas = JSON.parse(localStorage.getItem('clv_apuestas') || '[]');
+let apuestas = []; // siempre desde Sheets, nunca localStorage
 let filtroActual = 'todos';
 
 // Datos demo para ilustrar el sistema
@@ -950,6 +949,15 @@ async function obtenerOportunidadesSheets() {
 }
 
 // ==================== TRACKER ====================
+// ==================== TRACKER ====================
+async function cargarTrackerDesdeSheets() {
+  const resp = await llamarSheets({ accion: "obtenerTracker" });
+  if (resp?.ok && resp.tracker) {
+    apuestas = resp.tracker.apuestas || [];
+    renderHistorial(resp.tracker.resumen);
+  }
+}
+
 function precargarApuesta(idx) {
   const o = oportunidadesActuales[idx];
   document.getElementById('f-evento').value = o.evento;
@@ -957,7 +965,6 @@ function precargarApuesta(idx) {
   document.getElementById('f-cuota-coolbet').value = o.cuotaCoolbet;
   document.getElementById('f-cuota-pinnacle').value = o.cuotaPinnacle;
   document.getElementById('f-stake').value = o.stake;
-  // Guardar deporte y fecha para enviarlos al registrar
   document.getElementById('f-evento').dataset.deporte = o.deporte;
   document.getElementById('f-evento').dataset.fecha   = o.fecha;
   cambiarTab('tracker', document.querySelectorAll('.nav-tab')[1]);
@@ -979,147 +986,90 @@ async function registrarApuesta() {
     return;
   }
 
-  const clv = ((coolbet / pinnacle) - 1) * 100;
-  const ev  = ((1 / pinnacle) * coolbet - 1) * 100;
-  const id  = Date.now();
+  mostrarToast('⏳ Registrando en Sheets...');
+  const resp = await llamarSheets({
+    accion: 'registrarApuesta',
+    deporte, evento, seleccion,
+    cuotaCoolbet: coolbet,
+    cuotaPinnacle: pinnacle,
+    stakeCLP: stake,
+    fecha,
+  });
 
-  // Guardar localmente primero (respuesta inmediata)
-  const apuesta = {
-    id, fecha: new Date().toLocaleDateString('es-CL'),
-    deporte, evento, seleccion, coolbet, pinnacle,
-    clv: clv.toFixed(1), ev: ev.toFixed(1),
-    stake, resultado: 'pendiente', pl: 0, sheetsId: null,
-  };
-  apuestas.unshift(apuesta);
-  localStorage.setItem('clv_apuestas', JSON.stringify(apuestas));
-
-  // Limpiar form
-  ['f-evento','f-seleccion','f-cuota-coolbet','f-cuota-pinnacle','f-stake']
-    .forEach(id => { const el = document.getElementById(id); el.value = ''; delete el.dataset.deporte; });
-
-  renderHistorial();
-  actualizarPLSummary();
-  mostrarToast(sheetsConectado ? '⏳ Sincronizando con Sheets...' : '✓ Apuesta registrada');
-
-  // Sincronizar con Google Sheets en background
-  if (sheetsConectado) {
-    const resp = await llamarSheets({
-      accion: "registrarApuesta",
-      deporte, evento, seleccion,
-      cuotaCoolbet: coolbet,
-      cuotaPinnacle: pinnacle,
-      stakeCLP: stake,
-      fecha,
-    });
-    if (resp?.ok) {
-      apuesta.sheetsId = resp.id;
-      localStorage.setItem('clv_apuestas', JSON.stringify(apuestas));
-      mostrarToast('✅ Registrado en Google Sheets');
-    } else {
-      mostrarToast('⚠ Guardado local. Sheets no conectado');
-    }
+  if (resp?.ok) {
+    ['f-evento','f-seleccion','f-cuota-coolbet','f-cuota-pinnacle','f-stake']
+      .forEach(id => { const el = document.getElementById(id); el.value = ''; delete el.dataset.deporte; });
+    await cargarTrackerDesdeSheets();
+    mostrarToast('✅ Registrado en Google Sheets');
+  } else {
+    mostrarToast('⚠ Error al registrar — intenta de nuevo');
   }
 }
 
 async function marcarResultado(id, resultado) {
-  const ap = apuestas.find(a => a.id === id);
-  if (!ap) return;
-
-  ap.resultado = resultado;
-  ap.pl = resultado === 'ganada'
-    ? Math.round(ap.stake * (ap.coolbet - 1))
-    : -ap.stake;
-
-  localStorage.setItem('clv_apuestas', JSON.stringify(apuestas));
-  renderHistorial();
-  actualizarPLSummary();
-  mostrarToast(resultado === 'ganada' ? '🟢 Ganada' : '🔴 Perdida');
-
-  // Sincronizar resultado con Google Sheets
-  if (sheetsConectado && ap.sheetsId) {
-    const resp = await llamarSheets({
-      accion: "marcarResultado",
-      id: ap.sheetsId,
-      resultado: resultado === "ganada" ? "G" : "P",
-    });
-    if (resp?.ok) mostrarToast("✅ Resultado sincronizado con Sheets");
+  mostrarToast('⏳ Actualizando...');
+  const resp = await llamarSheets({
+    accion: 'marcarResultado',
+    id: String(id),
+    resultado: resultado === 'ganada' ? 'G' : 'P',
+  });
+  if (resp?.ok) {
+    await cargarTrackerDesdeSheets();
+    mostrarToast(resultado === 'ganada' ? '🟢 Ganada registrada' : '🔴 Perdida registrada');
+  } else {
+    mostrarToast('⚠ Error al actualizar — intenta de nuevo');
   }
 }
 
-function renderHistorial() {
+function renderHistorial(resumen) {
   const container = document.getElementById('historial-container');
   if (apuestas.length === 0) {
-    container.innerHTML = `<div class="empty-state" style="padding:24px;">
-      <div class="empty-text">Sin apuestas registradas aún</div>
-    </div>`;
+    container.innerHTML = '<div class="empty-state" style="padding:24px;"><div class="empty-text">Sin apuestas registradas aún</div></div>';
+    actualizarPLSummary(null);
     return;
   }
 
-  // Indicador de conexión con Sheets
-  const statusHtml = sheetsConectado
-    ? `<div style="font-size:11px;color:var(--green);font-family:var(--font-mono);
-                   margin-bottom:10px;display:flex;align-items:center;gap:6px;">
-         <span style="width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;"></span>
-         Sincronizado con Google Sheets
-       </div>`
-    : `<div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);
-                   margin-bottom:10px;display:flex;align-items:center;gap:6px;">
-         <span style="width:6px;height:6px;border-radius:50%;background:var(--muted);display:inline-block;"></span>
-         Solo local — configura WEB_APP_URL para sincronizar
-       </div>`;
-
-  container.innerHTML = statusHtml + apuestas.map(a => `
+  container.innerHTML =
+    '<div style="font-size:11px;color:var(--green);font-family:var(--font-mono);margin-bottom:10px;display:flex;align-items:center;gap:6px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;"></span>Sincronizado con Google Sheets</div>' +
+    apuestas.map(a => `
     <div class="apuesta-item">
       <div class="apuesta-info">
         <div class="apuesta-evento">${a.seleccion} — <span style="color:var(--blue)">${a.coolbet}</span></div>
-        <div class="apuesta-detalle">
-          ${a.evento} · CLV +${a.clv}% · $${a.stake.toLocaleString('es-CL')}
-          ${a.sheetsId ? '<span style="color:var(--green);margin-left:4px;">✓ Sheets</span>' : ''}
-        </div>
+        <div class="apuesta-detalle">${a.evento} · CLV +${a.clv}% · $${a.stake.toLocaleString('es-CL')}</div>
         ${a.resultado === 'pendiente' ? `
           <div style="display:flex;gap:6px;margin-top:6px;">
-            <button onclick="marcarResultado(${a.id},'ganada')"
-              style="background:var(--green-dim);border:1px solid var(--green);color:var(--green);
-                     font-size:11px;padding:4px 10px;border-radius:4px;cursor:pointer;">
-              ✓ Ganada
-            </button>
-            <button onclick="marcarResultado(${a.id},'perdida')"
-              style="background:#300;border:1px solid var(--red);color:var(--red);
-                     font-size:11px;padding:4px 10px;border-radius:4px;cursor:pointer;">
-              ✗ Perdida
-            </button>
+            <button onclick="marcarResultado('${a.id}','ganada')" style="background:var(--green-dim);border:1px solid var(--green);color:var(--green);font-size:11px;padding:4px 10px;border-radius:4px;cursor:pointer;">✓ Ganada</button>
+            <button onclick="marcarResultado('${a.id}','perdida')" style="background:#300;border:1px solid var(--red);color:var(--red);font-size:11px;padding:4px 10px;border-radius:4px;cursor:pointer;">✗ Perdida</button>
           </div>` : ''}
       </div>
       <div class="apuesta-resultado ${a.resultado}">
-        ${a.resultado === 'ganada'  ? '+$' + a.pl.toLocaleString('es-CL')
+        ${a.resultado === 'ganada' ? '+$' + Math.abs(a.pl).toLocaleString('es-CL')
         : a.resultado === 'perdida' ? '-$' + Math.abs(a.pl).toLocaleString('es-CL')
         : '⏳'}
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 
-  actualizarPLSummary();
+  actualizarPLSummary(resumen);
 }
 
-function actualizarPLSummary() {
-  const cerradas = apuestas.filter(a => a.resultado !== 'pendiente');
-  const plTotal  = cerradas.reduce((s, a) => s + a.pl, 0);
-  const volumen  = cerradas.reduce((s, a) => s + a.stake, 0);
-  const yield_   = volumen > 0 ? (plTotal / volumen * 100) : 0;
-  const clvProm  = apuestas.length > 0
-    ? apuestas.reduce((s, a) => s + parseFloat(a.clv), 0) / apuestas.length
-    : 0;
+function actualizarPLSummary(resumen) {
+  const r = resumen || {
+    plTotal: 0, yield: 0,
+    total: apuestas.length,
+    clvProm: apuestas.length > 0
+      ? apuestas.reduce((s,a) => s + (parseFloat(a.clv)||0), 0) / apuestas.length : 0
+  };
 
   const plEl = document.getElementById('pl-total');
-  plEl.textContent = (plTotal >= 0 ? '+' : '') + '$' + Math.abs(plTotal).toLocaleString('es-CL');
-  plEl.className = 'pl-val ' + (plTotal > 0 ? 'positivo' : plTotal < 0 ? 'negativo' : 'neutral');
+  plEl.textContent = (r.plTotal >= 0 ? '+' : '') + '$' + Math.abs(r.plTotal).toLocaleString('es-CL');
+  plEl.className = 'pl-val ' + (r.plTotal > 0 ? 'positivo' : r.plTotal < 0 ? 'negativo' : 'neutral');
 
   const yieldEl = document.getElementById('pl-yield');
-  yieldEl.textContent = (yield_ >= 0 ? '+' : '') + yield_.toFixed(1) + '%';
-  yieldEl.className = 'pl-val ' + (yield_ > 0 ? 'positivo' : yield_ < 0 ? 'negativo' : 'neutral');
+  yieldEl.textContent = (r.yield >= 0 ? '+' : '') + r.yield.toFixed(1) + '%';
+  yieldEl.className = 'pl-val ' + (r.yield > 0 ? 'positivo' : r.yield < 0 ? 'negativo' : 'neutral');
 
-  document.getElementById('pl-apuestas').textContent = apuestas.length;
-  document.getElementById('pl-clv-prom').textContent = '+' + clvProm.toFixed(1) + '%';
+  document.getElementById('pl-apuestas').textContent = r.total;
+  document.getElementById('pl-clv-prom').textContent = '+' + (r.clvProm||0).toFixed(1) + '%';
 }
 
 // ==================== UTILS ====================
@@ -1130,9 +1080,8 @@ function mostrarToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-// Init
-renderHistorial();
-actualizarPLSummary();
+// Init — cargar tracker desde Sheets al abrir
+cargarTrackerDesdeSheets();
 </script>
 
 <style>
