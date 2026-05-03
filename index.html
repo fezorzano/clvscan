@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CLV Scanner</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #080c14;
+    --surface:   #0e1521;
+    --surface2:  #151f30;
+    --border:    #1e2d45;
+    --green:     #00ff87;
+    --green-dim: #003d20;
+    --yellow:    #ffe066;
+    --yellow-dim:#3d3000;
+    --blue:      #4da6ff;
+    --muted:     #4a6080;
+    --text:      #e8f0fe;
+    --text2:     #8aa4c8;
+    --red:       #ff5c5c;
+    --font-mono: 'Space Mono', monospace;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(77,166,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(77,166,255,0.03) 1px, transparent 1px);
+    background-size: 32px 32px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 0 24px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--green), var(--blue));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  .logo-text {
+    font-family: var(--font-mono);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--text);
+  }
+
+  .logo-text span { color: var(--green); }
+
+  .scan-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--blue);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .scan-btn:hover { border-color: var(--blue); background: rgba(77,166,255,0.08); }
+  .scan-btn.scanning { color: var(--green); border-color: var(--green); animation: pulse 1s infinite; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  /* Stats bar */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .stat-val {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Filters */
+  .filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+
+  .filters::-webkit-scrollbar { display: none; }
+
+  .filter-btn {
+    flex-shrink: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .filter-btn.active {
+    background: rgba(0,255,135,0.1);
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  /* Section title */
+  .section-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Oportunidad card */
+  .oportunidad-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+    transition: all 0.2s;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .oportunidad-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+
+  .oportunidad-card.verde::before { background: var(--green); }
+  .oportunidad-card.amarillo::before { background: var(--yellow); }
+
+  .oportunidad-card.verde { border-color: rgba(0,255,135,0.2); }
+  .oportunidad-card.amarillo { border-color: rgba(255,224,102,0.15); }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+
+  .card-sport {
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 3px;
+  }
+
+  .card-evento {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+  }
+
+  .clv-badge {
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .verde .clv-badge { color: var(--green); }
+  .amarillo .clv-badge { color: var(--yellow); }
+
+  .clv-label {
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-align: right;
+    margin-top: 2px;
+  }
+
+  .verde .clv-label { color: var(--green); opacity: 0.7; }
+  .amarillo .clv-label { color: var(--yellow); opacity: 0.7; }
+
+  .card-seleccion {
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .seleccion-nombre {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .seleccion-cuota {
+    font-family: var(--font-mono);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--blue);
+  }
+
+  .card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-item {
+    text-align: center;
+  }
+
+  .footer-val {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .footer-label {
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .footer-divider {
+    width: 1px;
+    height: 28px;
+    background: var(--border);
+  }
+
+  /* Apostar button */
+  .apostar-btn {
+    display: block;
+    width: 100%;
+    background: linear-gradient(135deg, rgba(0,255,135,0.15), rgba(77,166,255,0.1));
+    border: 1px solid rgba(0,255,135,0.3);
+    color: var(--green);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 2px;
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+    margin-top: 10px;
+    transition: all 0.2s;
+  }
+
+  .apostar-btn:hover {
+    background: rgba(0,255,135,0.2);
+    border-color: var(--green);
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--muted);
+  }
+
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-text { font-size: 14px; line-height: 1.6; }
+
+  /* Config panel */
+  .config-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .config-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .config-row:last-child { border-bottom: none; }
+
+  .config-key {
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .config-val {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--blue);
+  }
+
+  /* Tracker tab */
+  .tracker-form {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .form-group { margin-bottom: 12px; }
+
+  .form-label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .form-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .form-input:focus { border-color: var(--blue); }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .submit-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--green), #00cc6a);
+    color: #000;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+
+  /* P&L summary */
+  .pl-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .pl-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+
+  .pl-val {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .pl-val.positivo { color: var(--green); }
+  .pl-val.negativo { color: var(--red); }
+  .pl-val.neutral  { color: var(--blue); }
+
+  .apuesta-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .apuesta-info { flex: 1; }
+  .apuesta-evento { font-size: 13px; font-weight: 600; }
+  .apuesta-detalle { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .apuesta-resultado {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 700;
+    text-align: right;
+  }
+
+  .apuesta-resultado.ganada { color: var(--green); }
+  .apuesta-resultado.perdida { color: var(--red); }
+  .apuesta-resultado.pendiente { color: var(--muted); }
+
+  /* Nav tabs */
+  .nav {
+    display: flex;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 20px;
+    gap: 4px;
+  }
+
+  .nav-tab {
+    flex: 1;
+    text-align: center;
+    padding: 9px 4px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--muted);
+    transition: all 0.2s;
+  }
+
+  .nav-tab.active {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Update time */
+  .update-time {
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 16px;
+    font-family: var(--font-mono);
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    transition: transform 0.3s;
+    z-index: 100;
+    white-space: nowrap;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">📊</div>
+      <div class="logo-text">CLV<span>SCAN</span></div>
+    </div>
+    <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
+      <span id="scanIcon">⟳</span> SCAN
+    </button>
+  </div>
+
+  <!-- Nav -->
+  <div class="nav">
+    <div class="nav-tab active" onclick="cambiarTab('oportunidades', this)">📡 Scanner</div>
+    <div class="nav-tab" onclick="cambiarTab('tracker', this)">📝 Tracker</div>
+    <div class="nav-tab" onclick="cambiarTab('config', this)">⚙️ Config</div>
+  </div>
+
+  <!-- TAB: OPORTUNIDADES -->
+  <div class="tab-content active" id="tab-oportunidades">
+
+    <!-- Stats -->
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-val" id="stat-total" style="color:var(--blue)">—</div>
+        <div class="stat-label">Mercados</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="stat-verdes" style="color:var(--green)">—</div>
+        <div class="stat-label">CLV &gt;5%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="stat-amarillos" style="color:var(--yellow)">—</div>
+        <div class="stat-label">CLV &gt;3%</div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+      <button class="filter-btn active" onclick="filtrar('todos', this)">Todos</button>
+      <button class="filter-btn" onclick="filtrar('verde', this)">🟢 Clara</button>
+      <button class="filter-btn" onclick="filtrar('amarillo', this)">🟡 Posible</button>
+      <button class="filter-btn" onclick="filtrar('futbol', this)">⚽ Fútbol</button>
+      <button class="filter-btn" onclick="filtrar('tenis', this)">🎾 Tenis</button>
+    </div>
+
+    <div class="update-time" id="updateTime">Presiona SCAN para buscar oportunidades</div>
+
+    <!-- Cards -->
+    <div id="oportunidades-container">
+      <div class="empty-state">
+        <div class="empty-icon">📡</div>
+        <div class="empty-text">
+          El scanner escanea automáticamente<br>cada hora vía Google Sheets.<br><br>
+          Aquí verás las oportunidades<br>con CLV positivo detectadas.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: TRACKER -->
+  <div class="tab-content" id="tab-tracker">
+
+    <!-- P&L Summary -->
+    <div class="pl-summary">
+      <div class="pl-card">
+        <div class="pl-val" id="pl-total" style="color:var(--blue)">$0</div>
+        <div class="stat-label">P&L Total</div>
+      </div>
+      <div class="pl-card">
+        <div class="pl-val" id="pl-yield" style="color:var(--blue)">0.0%</div>
+        <div class="stat-label">Yield</div>
+      </div>
+      <div class="pl-card">
+        <div class="pl-val" id="pl-apuestas" style="color:var(--blue)">0</div>
+        <div class="stat-label">Apuestas</div>
+      </div>
+      <div class="pl-card">
+        <div class="pl-val" id="pl-clv-prom" style="color:var(--blue)">0.0%</div>
+        <div class="stat-label">CLV Prom</div>
+      </div>
+    </div>
+
+    <!-- Formulario nueva apuesta -->
+    <div class="section-title">Nueva Apuesta</div>
+    <div class="tracker-form">
+      <div class="form-group">
+        <label class="form-label">Evento</label>
+        <input class="form-input" id="f-evento" type="text" placeholder="Ej: Real Madrid vs Barcelona">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Selección</label>
+        <input class="form-input" id="f-seleccion" type="text" placeholder="Ej: Real Madrid">
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Cuota Coolbet</label>
+          <input class="form-input" id="f-cuota-coolbet" type="number" step="0.01" placeholder="2.10">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cuota Pinnacle</label>
+          <input class="form-input" id="f-cuota-pinnacle" type="number" step="0.01" placeholder="1.95">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Stake (CLP)</label>
+        <input class="form-input" id="f-stake" type="number" step="1000" placeholder="15000">
+      </div>
+      <button class="submit-btn" onclick="registrarApuesta()">+ REGISTRAR APUESTA</button>
+    </div>
+
+    <!-- Lista de apuestas -->
+    <div class="section-title">Historial</div>
+    <div id="historial-container">
+      <div class="empty-state" style="padding: 24px;">
+        <div class="empty-text">Sin apuestas registradas aún</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: CONFIG -->
+  <div class="tab-content" id="tab-config">
+    <div class="section-title">Parámetros del Sistema</div>
+    <div class="config-panel">
+      <div class="config-row">
+        <span class="config-key">Bankroll actual</span>
+        <span class="config-val" id="cfg-bankroll">$500.000 CLP</span>
+      </div>
+      <div class="config-row">
+        <span class="config-key">Umbral CLV verde</span>
+        <span class="config-val">5.0%</span>
+      </div>
+      <div class="config-row">
+        <span class="config-key">Umbral CLV amarillo</span>
+        <span class="config-val">3.0%</span>
+      </div>
+      <div class="config-row">
+        <span class="config-key">Kelly fraccional</span>
+        <span class="config-val">25%</span>
+      </div>
+      <div class="config-row">
+        <span class="config-key">Casa principal</span>
+        <span class="config-val">Coolbet</span>
+      </div>
+      <div class="config-row">
+        <span class="config-key">Referencia CLV</span>
+        <span class="config-val">Pinnacle</span>
+      </div>
+      <div class="config-row">
+        <span class="config-key">Fuente de datos</span>
+        <span class="config-val">The Odds API</span>
+      </div>
+      <div class="config-row">
+        <span class="config-key">Frecuencia escaneo</span>
+        <span class="config-val">Cada 1 hora</span>
+      </div>
+    </div>
+
+    <div class="section-title">Instrucciones</div>
+    <div class="config-panel">
+      <div style="font-size:13px; line-height:1.8; color:var(--text2);">
+        <p style="margin-bottom:8px;"><span style="color:var(--green);">01.</span> Regístrate en <strong style="color:var(--text)">the-odds-api.com</strong> → obtén tu API key gratuita.</p>
+        <p style="margin-bottom:8px;"><span style="color:var(--green);">02.</span> Crea un nuevo Google Sheets → <strong style="color:var(--text)">Extensiones → Apps Script</strong>.</p>
+        <p style="margin-bottom:8px;"><span style="color:var(--green);">03.</span> Pega el contenido de <strong style="color:var(--text)">CLV_System_AppsScript.js</strong> en el editor.</p>
+        <p style="margin-bottom:8px;"><span style="color:var(--green);">04.</span> Reemplaza <strong style="color:var(--text)">TU_API_KEY_AQUI</strong> y <strong style="color:var(--text)">TU_EMAIL@gmail.com</strong> en CONFIG.</p>
+        <p style="margin-bottom:8px;"><span style="color:var(--green);">05.</span> Ejecuta <strong style="color:var(--text)">configurarTrigger()</strong> una sola vez → escaneo automático cada hora activo.</p>
+        <p style="margin-bottom:8px;"><span style="color:var(--green);">06.</span> En Apps Script: <strong style="color:var(--text)">Implementar → Nueva implementación → Aplicación web</strong>. Ejecutar como: Yo. Acceso: Cualquier persona. Copia la URL generada.</p>
+        <p style="margin-bottom:8px;"><span style="color:var(--green);">07.</span> Pega esa URL en la constante <strong style="color:var(--text)">WEB_APP_URL</strong> al inicio del JS de este dashboard.</p>
+        <p><span style="color:var(--green);">08.</span> Listo. Al tocar "Registrar apuesta" en una card, los datos van directo a tu Google Sheets.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== CONFIGURACIÓN ====================
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbybKwaeAuGaHzZwzmPPqdqUg3aCuyTk1QXRGf6DC1s_qp_vp37GCCC5ilk0ds78TO_96A/exec";
+const sheetsConectado = true;
+
+// ==================== ESTADO ====================
+// Las apuestas se guardan localmente Y en Google Sheets (si está configurado)
+let apuestas = JSON.parse(localStorage.getItem('clv_apuestas') || '[]');
+let filtroActual = 'todos';
+
+// Datos demo para ilustrar el sistema
+const DEMO_OPORTUNIDADES = [
+  {
+    nivel: 'verde',
+    deporte: '⚽ Premier League',
+    evento: 'Arsenal vs Chelsea',
+    seleccion: 'Arsenal',
+    cuotaCoolbet: 2.35,
+    cuotaPinnacle: 2.18,
+    clv: 7.8,
+    ev: 4.2,
+    stake: 18000,
+    fecha: 'Hoy 21:00'
+  },
+  {
+    nivel: 'verde',
+    deporte: '🎾 Roland Garros ATP',
+    evento: 'Alcaraz vs Sinner',
+    seleccion: 'Alcaraz',
+    cuotaCoolbet: 1.95,
+    cuotaPinnacle: 1.81,
+    clv: 7.7,
+    ev: 3.9,
+    stake: 15000,
+    fecha: 'Mañana 14:00'
+  },
+  {
+    nivel: 'amarillo',
+    deporte: '⚽ Copa Libertadores',
+    evento: 'Colo-Colo vs Flamengo',
+    seleccion: 'Empate',
+    cuotaCoolbet: 3.40,
+    cuotaPinnacle: 3.22,
+    clv: 5.6,
+    ev: 2.8,
+    stake: 9000,
+    fecha: 'Hoy 22:00'
+  },
+  {
+    nivel: 'amarillo',
+    deporte: '⚽ La Liga',
+    evento: 'Barcelona vs Atlético',
+    seleccion: 'Barcelona',
+    cuotaCoolbet: 1.75,
+    cuotaPinnacle: 1.67,
+    clv: 4.8,
+    ev: 2.1,
+    stake: 11000,
+    fecha: 'Dom 20:30'
+  },
+  {
+    nivel: 'amarillo',
+    deporte: '🎾 Roland Garros WTA',
+    evento: 'Swiatek vs Gauff',
+    seleccion: 'Swiatek',
+    cuotaCoolbet: 1.62,
+    cuotaPinnacle: 1.55,
+    clv: 4.5,
+    ev: 1.8,
+    stake: 8000,
+    fecha: 'Mañana 11:00'
+  },
+];
+
+let oportunidadesActuales = [];
+
+// ==================== TABS ====================
+function cambiarTab(tab, el) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  el.classList.add('active');
+  if (tab === 'tracker') renderHistorial();
+}
+
+// ==================== SCANNER ====================
+async function simularEscaneo() {
+  const btn  = document.getElementById('scanBtn');
+  const icon = document.getElementById('scanIcon');
+  btn.classList.add('scanning');
+  icon.textContent = '◌';
+  mostrarToast('⏳ Cargando oportunidades desde Sheets...');
+
+  try {
+    const resp = await obtenerOportunidadesSheets();
+
+    if (resp?.ok && resp.oportunidades?.length > 0) {
+      oportunidadesActuales = resp.oportunidades;
+      renderOportunidades(oportunidadesActuales);
+      actualizarStats(oportunidadesActuales);
+      document.getElementById('updateTime').textContent =
+        `Actualizado: ${new Date().toLocaleTimeString('es-CL', {hour:'2-digit',minute:'2-digit'})} · ${oportunidadesActuales.length} mercados con valor`;
+      mostrarToast(`✅ ${oportunidadesActuales.length} oportunidades cargadas`);
+    } else if (resp?.ok && resp.oportunidades?.length === 0) {
+      oportunidadesActuales = [];
+      renderOportunidades([]);
+      actualizarStats([]);
+      document.getElementById('updateTime').textContent =
+        `Actualizado: ${new Date().toLocaleTimeString('es-CL', {hour:'2-digit',minute:'2-digit'})} · Sin oportunidades en este momento`;
+      mostrarToast('Sin oportunidades en este momento');
+    } else {
+      // Fallback a demo si Sheets no responde
+      oportunidadesActuales = [...DEMO_OPORTUNIDADES];
+      renderOportunidades(oportunidadesActuales);
+      actualizarStats(oportunidadesActuales);
+      mostrarToast('⚠ Usando datos demo — Sheets no disponible');
+    }
+  } catch(e) {
+    oportunidadesActuales = [...DEMO_OPORTUNIDADES];
+    renderOportunidades(oportunidadesActuales);
+    actualizarStats(oportunidadesActuales);
+    mostrarToast('⚠ Error de conexión — mostrando demo');
+  }
+
+  btn.classList.remove('scanning');
+  icon.textContent = '⟳';
+}
+
+function actualizarStats(ops) {
+  document.getElementById('stat-total').textContent = ops.length;
+  document.getElementById('stat-verdes').textContent = ops.filter(o => o.nivel === 'verde').length;
+  document.getElementById('stat-amarillos').textContent = ops.filter(o => o.nivel === 'amarillo').length;
+}
+
+function filtrar(tipo, el) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  filtroActual = tipo;
+
+  let filtradas = [...oportunidadesActuales];
+  if (tipo === 'verde')    filtradas = filtradas.filter(o => o.nivel === 'verde');
+  if (tipo === 'amarillo') filtradas = filtradas.filter(o => o.nivel === 'amarillo');
+  if (tipo === 'futbol')   filtradas = filtradas.filter(o => o.deporte.includes('⚽'));
+  if (tipo === 'tenis')    filtradas = filtradas.filter(o => o.deporte.includes('🎾'));
+
+  renderOportunidades(filtradas);
+}
+
+function renderOportunidades(ops) {
+  const container = document.getElementById('oportunidades-container');
+
+  if (ops.length === 0) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <div class="empty-text">Sin oportunidades en este filtro</div>
+    </div>`;
+    return;
+  }
+
+  container.innerHTML = ops.map((o, i) => `
+    <div class="oportunidad-card ${o.nivel}" style="animation: fadeIn 0.3s ease ${i*0.05}s both;">
+      <div class="card-header">
+        <div>
+          <div class="card-sport">${o.deporte} · ${o.fecha}</div>
+          <div class="card-evento">${o.evento}</div>
+        </div>
+        <div>
+          <div class="clv-badge">+${o.clv}%</div>
+          <div class="clv-label">CLV</div>
+        </div>
+      </div>
+
+      <div class="card-seleccion">
+        <div>
+          <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Apostar a</div>
+          <div class="seleccion-nombre">${o.seleccion}</div>
+        </div>
+        <div class="seleccion-cuota">${o.cuotaCoolbet.toFixed(2)}</div>
+      </div>
+
+      <div class="card-footer">
+        <div class="footer-item">
+          <div class="footer-val" style="color:var(--muted);font-size:11px;">
+            Pinn: ${o.cuotaPinnacle.toFixed(2)}
+          </div>
+          <div class="footer-label">Referencia</div>
+        </div>
+        <div class="footer-divider"></div>
+        <div class="footer-item">
+          <div class="footer-val" style="color:${o.ev > 0 ? 'var(--green)' : 'var(--red)'}">
+            +${o.ev}%
+          </div>
+          <div class="footer-label">Valor esp.</div>
+        </div>
+        <div class="footer-divider"></div>
+        <div class="footer-item">
+          <div class="footer-val" style="color:var(--blue)">
+            $${o.stake.toLocaleString('es-CL')}
+          </div>
+          <div class="footer-label">Kelly 25%</div>
+        </div>
+      </div>
+
+      <button class="apostar-btn" onclick="precargarApuesta(${i})">
+        REGISTRAR APUESTA →
+      </button>
+    </div>
+  `).join('');
+}
+
+// ==================== COMUNICACIÓN CON GOOGLE SHEETS ====================
+async function llamarSheets(payload) {
+  if (!sheetsConectado) return null;
+  try {
+    const res = await fetch(WEB_APP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (e) {
+    console.warn("Error conectando con Sheets:", e.message);
+    return null;
+  }
+}
+
+async function obtenerOportunidadesSheets() {
+  if (!sheetsConectado) return null;
+  try {
+    const res = await fetch(`${WEB_APP_URL}?accion=obtenerOportunidades`);
+    return await res.json();
+  } catch(e) {
+    console.warn("Error obteniendo oportunidades:", e.message);
+    return null;
+  }
+}
+
+// ==================== TRACKER ====================
+function precargarApuesta(idx) {
+  const o = oportunidadesActuales[idx];
+  document.getElementById('f-evento').value = o.evento;
+  document.getElementById('f-seleccion').value = o.seleccion;
+  document.getElementById('f-cuota-coolbet').value = o.cuotaCoolbet;
+  document.getElementById('f-cuota-pinnacle').value = o.cuotaPinnacle;
+  document.getElementById('f-stake').value = o.stake;
+  // Guardar deporte y fecha para enviarlos al registrar
+  document.getElementById('f-evento').dataset.deporte = o.deporte;
+  document.getElementById('f-evento').dataset.fecha   = o.fecha;
+  cambiarTab('tracker', document.querySelectorAll('.nav-tab')[1]);
+  mostrarToast('✓ Datos cargados — confirma y registra');
+}
+
+async function registrarApuesta() {
+  const eventoEl  = document.getElementById('f-evento');
+  const evento    = eventoEl.value;
+  const seleccion = document.getElementById('f-seleccion').value;
+  const coolbet   = parseFloat(document.getElementById('f-cuota-coolbet').value);
+  const pinnacle  = parseFloat(document.getElementById('f-cuota-pinnacle').value);
+  const stake     = parseInt(document.getElementById('f-stake').value);
+  const deporte   = eventoEl.dataset.deporte || '';
+  const fecha     = eventoEl.dataset.fecha   || '';
+
+  if (!evento || !seleccion || !coolbet || !pinnacle || !stake) {
+    mostrarToast('⚠ Completa todos los campos');
+    return;
+  }
+
+  const clv = ((coolbet / pinnacle) - 1) * 100;
+  const ev  = ((1 / pinnacle) * coolbet - 1) * 100;
+  const id  = Date.now();
+
+  // Guardar localmente primero (respuesta inmediata)
+  const apuesta = {
+    id, fecha: new Date().toLocaleDateString('es-CL'),
+    deporte, evento, seleccion, coolbet, pinnacle,
+    clv: clv.toFixed(1), ev: ev.toFixed(1),
+    stake, resultado: 'pendiente', pl: 0, sheetsId: null,
+  };
+  apuestas.unshift(apuesta);
+  localStorage.setItem('clv_apuestas', JSON.stringify(apuestas));
+
+  // Limpiar form
+  ['f-evento','f-seleccion','f-cuota-coolbet','f-cuota-pinnacle','f-stake']
+    .forEach(id => { const el = document.getElementById(id); el.value = ''; delete el.dataset.deporte; });
+
+  renderHistorial();
+  actualizarPLSummary();
+  mostrarToast(sheetsConectado ? '⏳ Sincronizando con Sheets...' : '✓ Apuesta registrada');
+
+  // Sincronizar con Google Sheets en background
+  if (sheetsConectado) {
+    const resp = await llamarSheets({
+      accion: 'registrarApuesta',
+      deporte, evento, seleccion,
+      cuotaCoolbet: coolbet,
+      cuotaPinnacle: pinnacle,
+      stakeCLP: stake,
+      fecha,
+    });
+    if (resp?.ok) {
+      apuesta.sheetsId = resp.id;
+      localStorage.setItem('clv_apuestas', JSON.stringify(apuestas));
+      mostrarToast('✅ Registrado en Google Sheets');
+    } else {
+      mostrarToast('⚠ Guardado local. Sheets no conectado');
+    }
+  }
+}
+
+async function marcarResultado(id, resultado) {
+  const ap = apuestas.find(a => a.id === id);
+  if (!ap) return;
+
+  ap.resultado = resultado;
+  ap.pl = resultado === 'ganada'
+    ? Math.round(ap.stake * (ap.coolbet - 1))
+    : -ap.stake;
+
+  localStorage.setItem('clv_apuestas', JSON.stringify(apuestas));
+  renderHistorial();
+  actualizarPLSummary();
+  mostrarToast(resultado === 'ganada' ? '🟢 Ganada' : '🔴 Perdida');
+
+  // Sincronizar resultado con Google Sheets
+  if (sheetsConectado && ap.sheetsId) {
+    const resp = await llamarSheets({
+      accion: 'marcarResultado',
+      id: ap.sheetsId,
+      resultado: resultado === 'ganada' ? 'G' : 'P',
+    });
+    if (resp?.ok) mostrarToast('✅ Resultado sincronizado con Sheets');
+  }
+}
+
+function renderHistorial() {
+  const container = document.getElementById('historial-container');
+  if (apuestas.length === 0) {
+    container.innerHTML = `<div class="empty-state" style="padding:24px;">
+      <div class="empty-text">Sin apuestas registradas aún</div>
+    </div>`;
+    return;
+  }
+
+  // Indicador de conexión con Sheets
+  const statusHtml = sheetsConectado
+    ? `<div style="font-size:11px;color:var(--green);font-family:var(--font-mono);
+                   margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+         <span style="width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;"></span>
+         Sincronizado con Google Sheets
+       </div>`
+    : `<div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);
+                   margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+         <span style="width:6px;height:6px;border-radius:50%;background:var(--muted);display:inline-block;"></span>
+         Solo local — configura WEB_APP_URL para sincronizar
+       </div>`;
+
+  container.innerHTML = statusHtml + apuestas.map(a => `
+    <div class="apuesta-item">
+      <div class="apuesta-info">
+        <div class="apuesta-evento">${a.seleccion} — <span style="color:var(--blue)">${a.coolbet}</span></div>
+        <div class="apuesta-detalle">
+          ${a.evento} · CLV +${a.clv}% · $${a.stake.toLocaleString('es-CL')}
+          ${a.sheetsId ? '<span style="color:var(--green);margin-left:4px;">✓ Sheets</span>' : ''}
+        </div>
+        ${a.resultado === 'pendiente' ? `
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <button onclick="marcarResultado(${a.id},'ganada')"
+              style="background:var(--green-dim);border:1px solid var(--green);color:var(--green);
+                     font-size:11px;padding:4px 10px;border-radius:4px;cursor:pointer;">
+              ✓ Ganada
+            </button>
+            <button onclick="marcarResultado(${a.id},'perdida')"
+              style="background:#300;border:1px solid var(--red);color:var(--red);
+                     font-size:11px;padding:4px 10px;border-radius:4px;cursor:pointer;">
+              ✗ Perdida
+            </button>
+          </div>` : ''}
+      </div>
+      <div class="apuesta-resultado ${a.resultado}">
+        ${a.resultado === 'ganada'  ? '+$' + a.pl.toLocaleString('es-CL')
+        : a.resultado === 'perdida' ? '-$' + Math.abs(a.pl).toLocaleString('es-CL')
+        : '⏳'}
+      </div>
+    </div>
+  `).join('');
+
+  actualizarPLSummary();
+}
+
+function actualizarPLSummary() {
+  const cerradas = apuestas.filter(a => a.resultado !== 'pendiente');
+  const plTotal  = cerradas.reduce((s, a) => s + a.pl, 0);
+  const volumen  = cerradas.reduce((s, a) => s + a.stake, 0);
+  const yield_   = volumen > 0 ? (plTotal / volumen * 100) : 0;
+  const clvProm  = apuestas.length > 0
+    ? apuestas.reduce((s, a) => s + parseFloat(a.clv), 0) / apuestas.length
+    : 0;
+
+  const plEl = document.getElementById('pl-total');
+  plEl.textContent = (plTotal >= 0 ? '+' : '') + '$' + Math.abs(plTotal).toLocaleString('es-CL');
+  plEl.className = 'pl-val ' + (plTotal > 0 ? 'positivo' : plTotal < 0 ? 'negativo' : 'neutral');
+
+  const yieldEl = document.getElementById('pl-yield');
+  yieldEl.textContent = (yield_ >= 0 ? '+' : '') + yield_.toFixed(1) + '%';
+  yieldEl.className = 'pl-val ' + (yield_ > 0 ? 'positivo' : yield_ < 0 ? 'negativo' : 'neutral');
+
+  document.getElementById('pl-apuestas').textContent = apuestas.length;
+  document.getElementById('pl-clv-prom').textContent = '+' + clvProm.toFixed(1) + '%';
+}
+
+// ==================== UTILS ====================
+function mostrarToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// Init
+renderHistorial();
+actualizarPLSummary();
+</script>
+
+<style>
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>
+</body>
+</html>
