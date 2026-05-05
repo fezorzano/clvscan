@@ -625,6 +625,38 @@
       </div>
     </div>
 
+    <!-- Calculadora Kelly -->
+    <div class="section-title">Calculadora Kelly</div>
+    <div class="tracker-form">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Cuota Coolbet</label>
+          <input class="form-input" id="k-coolbet" type="number" step="0.01" placeholder="2.10" oninput="calcularKelly()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cuota Pinnacle</label>
+          <input class="form-input" id="k-pinnacle" type="number" step="0.01" placeholder="1.95" oninput="calcularKelly()">
+        </div>
+      </div>
+      <div id="kelly-resultado" style="display:none; margin-top:4px;">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;">
+          <div class="stat-card">
+            <div class="stat-val" id="k-clv" style="font-size:18px;color:var(--green)">—</div>
+            <div class="stat-label">CLV</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val" id="k-ev" style="font-size:18px;color:var(--blue)">—</div>
+            <div class="stat-label">EV</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val" id="k-stake" style="font-size:18px;color:var(--yellow)">—</div>
+            <div class="stat-label">Stake</div>
+          </div>
+        </div>
+        <div id="k-alerta" style="font-size:11px;text-align:center;font-family:var(--font-mono);padding:6px;border-radius:6px;"></div>
+      </div>
+    </div>
+
     <!-- Formulario nueva apuesta -->
     <div class="section-title">Nueva Apuesta</div>
     <div class="tracker-form">
@@ -946,7 +978,45 @@ async function obtenerOportunidadesSheets() {
   return await llamarSheets({ accion: "obtenerOportunidades" });
 }
 
-// ==================== TRACKER ====================
+// ==================== CALCULADORA KELLY ====================
+function calcularKelly() {
+  const coolbet  = parseFloat(document.getElementById('k-coolbet').value);
+  const pinnacle = parseFloat(document.getElementById('k-pinnacle').value);
+
+  const resultado = document.getElementById('kelly-resultado');
+  if (!coolbet || !pinnacle || coolbet <= 1 || pinnacle <= 1) {
+    resultado.style.display = 'none';
+    return;
+  }
+
+  const probJusta = 1 / pinnacle;
+  const clv  = ((coolbet / pinnacle) - 1) * 100;
+  const ev   = ((probJusta * coolbet) - 1) * 100;
+  const b    = coolbet - 1;
+  const kelly = Math.max(0, (probJusta * coolbet - 1) / b);
+  const stake = Math.round(500000 * kelly * 0.25 / 1000) * 1000;
+
+  document.getElementById('k-clv').textContent   = (clv >= 0 ? '+' : '') + clv.toFixed(1) + '%';
+  document.getElementById('k-ev').textContent    = (ev  >= 0 ? '+' : '') + ev.toFixed(1)  + '%';
+  document.getElementById('k-stake').textContent = '$' + stake.toLocaleString('es-CL');
+
+  const alerta = document.getElementById('k-alerta');
+  if (clv >= 5) {
+    alerta.textContent = '🟢 CLV clara — vale apostar';
+    alerta.style.background = 'var(--green-dim)';
+    alerta.style.color = 'var(--green)';
+  } else if (clv >= 3) {
+    alerta.textContent = '🟡 CLV posible — a tu criterio';
+    alerta.style.background = 'var(--yellow-dim)';
+    alerta.style.color = 'var(--yellow)';
+  } else {
+    alerta.textContent = '🔴 CLV insuficiente — no recomendado';
+    alerta.style.background = '#300';
+    alerta.style.color = 'var(--red)';
+  }
+  resultado.style.display = 'block';
+}
+
 // ==================== TRACKER ====================
 async function cargarTrackerDesdeSheets() {
   try {
