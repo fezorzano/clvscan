@@ -954,9 +954,17 @@ function renderOportunidades(ops) {
         </div>
       </div>
 
-      <button class="apostar-btn" onclick="precargarApuesta(${i})">
-        REGISTRAR APUESTA →
-      </button>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button class="apostar-btn" style="flex:1" onclick="precargarApuesta(${i})">
+          REGISTRAR APUESTA →
+        </button>
+        <a href="${getCoolbetUrl(o.deporte, o.evento)}" target="_blank"
+          style="flex-shrink:0;display:flex;align-items:center;justify-content:center;
+                 width:44px;background:var(--surface2);border:1px solid rgba(0,255,135,0.3);
+                 border-radius:8px;color:var(--green);font-size:18px;text-decoration:none;">
+          🎰
+        </a>
+      </div>
     </div>
   `).join('');
 }
@@ -976,6 +984,14 @@ async function llamarSheets(params) {
 
 async function obtenerOportunidadesSheets() {
   return await llamarSheets({ accion: "obtenerOportunidades" });
+}
+
+// ==================== COOLBET URL ====================
+function getCoolbetUrl(deporte, evento) {
+  // Usa el buscador de Coolbet con el nombre del partido
+  // Es la forma más directa de llegar al partido exacto
+  const query = encodeURIComponent(evento);
+  return `https://www.coolbet.com/cl/deportes?search=${query}`;
 }
 
 // ==================== CALCULADORA KELLY ====================
