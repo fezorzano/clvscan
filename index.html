@@ -958,7 +958,7 @@ function renderOportunidades(ops) {
         <button class="apostar-btn" style="flex:1" onclick="precargarApuesta(${i})">
           REGISTRAR APUESTA →
         </button>
-        <a href="${getCoolbetUrl(o.deporte, o.evento)}" target="_blank"
+        <a href="${getCoolbetUrl(o.deporte)}" target="_blank"
           style="flex-shrink:0;display:flex;align-items:center;justify-content:center;
                  width:44px;background:var(--surface2);border:1px solid rgba(0,255,135,0.3);
                  border-radius:8px;color:var(--green);font-size:18px;text-decoration:none;">
@@ -987,11 +987,64 @@ async function obtenerOportunidadesSheets() {
 }
 
 // ==================== COOLBET URL ====================
-function getCoolbetUrl(deporte, evento) {
-  // Usa el buscador de Coolbet con el nombre del partido
-  // Es la forma más directa de llegar al partido exacto
-  const query = encodeURIComponent(evento);
-  return `https://www.coolbet.com/cl/deportes?search=${query}`;
+function getCoolbetUrl(deporte) {
+  const base = "https://www.coolbet.com/cl/deportes";
+  const d = deporte.toLowerCase();
+
+  if (d.includes("premier league"))      return `${base}/futbol/inglaterra/premier-league`;
+  if (d.includes("championship"))        return `${base}/futbol/inglaterra/championship`;
+  if (d.includes("league one"))          return `${base}/futbol/inglaterra/league-one`;
+  if (d.includes("fa cup"))              return `${base}/futbol/inglaterra/fa-cup`;
+  if (d.includes("efl cup"))             return `${base}/futbol/inglaterra/efl-cup`;
+  if (d.includes("la liga 2"))           return `${base}/futbol/espana/segunda-division`;
+  if (d.includes("la liga"))             return `${base}/futbol/espana/la-liga`;
+  if (d.includes("copa del rey"))        return `${base}/futbol/espana/copa-del-rey`;
+  if (d.includes("serie b"))             return `${base}/futbol/italia/serie-b`;
+  if (d.includes("serie a"))             return `${base}/futbol/italia/serie-a`;
+  if (d.includes("coppa italia"))        return `${base}/futbol/italia/coppa-italia`;
+  if (d.includes("bundesliga 2"))        return `${base}/futbol/alemania/bundesliga-2`;
+  if (d.includes("bundesliga austria"))  return `${base}/futbol/austria/bundesliga`;
+  if (d.includes("bundesliga"))          return `${base}/futbol/alemania/bundesliga`;
+  if (d.includes("ligue 2"))             return `${base}/futbol/francia/ligue-2`;
+  if (d.includes("ligue 1"))             return `${base}/futbol/francia/ligue-1`;
+  if (d.includes("eredivisie"))          return `${base}/futbol/holanda/eredivisie`;
+  if (d.includes("primeira liga"))       return `${base}/futbol/portugal/primeira-liga`;
+  if (d.includes("pro league"))          return `${base}/futbol/belgica/first-division-a`;
+  if (d.includes("süper lig"))           return `${base}/futbol/turquia/super-lig`;
+  if (d.includes("super league grecia")) return `${base}/futbol/grecia/super-league`;
+  if (d.includes("premier liga rusia"))  return `${base}/futbol/rusia/premier-liga`;
+  if (d.includes("superliga dinamarca")) return `${base}/futbol/dinamarca/superliga`;
+  if (d.includes("eliteserien"))         return `${base}/futbol/noruega/eliteserien`;
+  if (d.includes("allsvenskan"))         return `${base}/futbol/suecia/allsvenskan`;
+  if (d.includes("superettan"))          return `${base}/futbol/suecia/superettan`;
+  if (d.includes("super league suiza"))  return `${base}/futbol/suiza/super-league`;
+  if (d.includes("premiership escocia")) return `${base}/futbol/escocia/premiership`;
+  if (d.includes("ekstraklasa"))         return `${base}/futbol/polonia/ekstraklasa`;
+  if (d.includes("champions league femenin")) return `${base}/futbol/europa/champions-league-femenina`;
+  if (d.includes("champions league"))    return `${base}/futbol/europa/champions-league`;
+  if (d.includes("europa league"))       return `${base}/futbol/europa/europa-league`;
+  if (d.includes("conference league"))   return `${base}/futbol/europa/conference-league`;
+  if (d.includes("nations league"))      return `${base}/futbol/europa/nations-league`;
+  if (d.includes("eurocopa"))            return `${base}/futbol/europa/eurocopa`;
+  if (d.includes("libertadores"))        return `${base}/futbol/sudamerica/copa-libertadores`;
+  if (d.includes("sudamericana"))        return `${base}/futbol/sudamerica/copa-sudamericana`;
+  if (d.includes("copa amér"))           return `${base}/futbol/sudamerica/copa-america`;
+  if (d.includes("eliminatorias conmebol")) return `${base}/futbol/sudamerica/eliminatorias`;
+  if (d.includes("brasileir"))           return `${base}/futbol/brasil/serie-a`;
+  if (d.includes("argentina"))           return `${base}/futbol/argentina/primera-division`;
+  if (d.includes("chile"))               return `${base}/futbol/chile/primera-division`;
+  if (d.includes("mls"))                 return `${base}/futbol/estados-unidos/mls`;
+  if (d.includes("liga mx"))             return `${base}/futbol/mexico/liga-mx`;
+  if (d.includes("j-league"))            return `${base}/futbol/japon/j-league`;
+  if (d.includes("k-league"))            return `${base}/futbol/corea/k-league`;
+  if (d.includes("saudi pro"))           return `${base}/futbol/arabia-saudita/pro-league`;
+  if (d.includes("a-league"))            return `${base}/futbol/australia/a-league`;
+  if (d.includes("africa cup"))          return `${base}/futbol/africa/copa-africa`;
+  if (d.includes("world cup") || d.includes("mundial") || d.includes("fifa")) return `${base}/futbol/mundial`;
+  if (d.includes("⚽"))                  return `${base}/futbol`;
+  if (d.includes("🎾") || d.includes("atp") || d.includes("wta") || d.includes("roland") || d.includes("wimbledon") || d.includes("open")) return `${base}/tenis`;
+
+  return base;
 }
 
 // ==================== CALCULADORA KELLY ====================
