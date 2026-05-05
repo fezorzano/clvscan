@@ -933,10 +933,8 @@ function renderOportunidades(ops) {
 async function llamarSheets(params) {
   if (!sheetsConectado) return null;
   try {
-    const query = Object.entries(params)
-      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-      .join("&");
-    const res = await fetch(`${WEB_APP_URL}?${query}`);
+    const query = new URLSearchParams(params).toString();
+    const res   = await fetch(`${WEB_APP_URL}?${query}`);
     return await res.json();
   } catch(e) {
     console.warn("Error conectando con Sheets:", e.message);
@@ -951,10 +949,15 @@ async function obtenerOportunidadesSheets() {
 // ==================== TRACKER ====================
 // ==================== TRACKER ====================
 async function cargarTrackerDesdeSheets() {
-  const resp = await llamarSheets({ accion: "obtenerTracker" });
-  if (resp?.ok && resp.tracker) {
-    apuestas = resp.tracker.apuestas || [];
-    renderHistorial(resp.tracker.resumen);
+  try {
+    const res  = await fetch(`${WEB_APP_URL}?accion=obtenerTracker`);
+    const resp = await res.json();
+    if (resp?.ok && resp.tracker) {
+      apuestas = resp.tracker.apuestas || [];
+      renderHistorial(resp.tracker.resumen);
+    }
+  } catch(e) {
+    console.warn("Error cargando tracker:", e.message);
   }
 }
 
