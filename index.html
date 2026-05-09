@@ -626,6 +626,12 @@
       </div>
     </div>
 
+    <!-- Oportunidades para aumentar stake -->
+    <div id="aumentar-section" style="display:none;">
+      <div class="section-title" style="color:var(--yellow)">📈 Aumentar Stake</div>
+      <div id="aumentar-container"></div>
+    </div>
+
     <!-- Calculadora Kelly -->
     <div class="section-title">Calculadora Kelly</div>
     <div class="tracker-form">
@@ -783,7 +789,7 @@ function cambiarTab(tab, el) {
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById(`tab-${tab}`).classList.add('active');
   el.classList.add('active');
-  if (tab === 'tracker') renderHistorial();
+  if (tab === 'tracker') cargarTrackerDesdeSheets();
 }
 
 // ==================== SCANNER ====================
@@ -812,24 +818,26 @@ async function simularEscaneo() {
           a.resultado === "pendiente"
         );
 
-        if (!apuestaPendiente) return o; // no apostada → mostrar normal
+        if (!apuestaPendiente) return { ...o, tipo: 'nueva' };
 
-        const clvActual   = parseFloat(o.clv);   // ya viene como % (ej: 4.5)
-        const clvOriginal = parseFloat(apuestaPendiente.clv); // ídem
+        const clvActual   = parseFloat(o.clv);
+        const clvOriginal = parseFloat(apuestaPendiente.clv);
 
         if (clvActual - clvOriginal > 2) {
-          // CLV subió más de 2pp → sugerir aumentar stake
-          const stakeExtra = Math.max(0, o.stake - apuestaPendiente.stake);
-          return { ...o, aumentar: true, stakeExtra, clvOriginal };
+          return { ...o, tipo: 'aumentar', clvOriginal, stakeExtra: Math.max(0, o.stake - apuestaPendiente.stake), apuestaId: apuestaPendiente.id };
         }
 
         return null; // ya apostada sin mejora → omitir
       }).filter(Boolean);
 
-      const omitidas = resp.oportunidades.length - oportunidadesFiltradas.length;
-      oportunidadesActuales = oportunidadesFiltradas;
-      renderOportunidades(oportunidadesActuales);
-      actualizarStats(oportunidadesActuales);
+      const nuevas    = oportunidadesFiltradas.filter(o => o.tipo === 'nueva');
+      const aumentar  = oportunidadesFiltradas.filter(o => o.tipo === 'aumentar');
+      const omitidas  = resp.oportunidades.length - oportunidadesFiltradas.length;
+
+      oportunidadesActuales = nuevas;
+      renderOportunidades(nuevas);
+      actualizarStats(nuevas);
+      renderAumentarStake(aumentar);
       const msgOmitidas = omitidas > 0 ? ` · ${omitidas} ya apostada(s)` : '';
       document.getElementById('updateTime').textContent =
         `Actualizado: ${new Date().toLocaleTimeString('es-CL', {hour:'2-digit',minute:'2-digit'})} · ${oportunidadesActuales.length} mercados con valor${msgOmitidas}`;
@@ -1097,6 +1105,33 @@ function calcularKelly() {
     alerta.style.color = 'var(--red)';
   }
   resultado.style.display = 'block';
+}
+
+// ==================== AUMENTAR STAKE ====================
+function renderAumentarStake(ops) {
+  const section   = document.getElementById('aumentar-section');
+  const container = document.getElementById('aumentar-container');
+
+  if (!ops || ops.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+  container.innerHTML = ops.map(o => `
+    <div class="apuesta-item" style="border-color:rgba(255,224,102,0.3);margin-bottom:8px;">
+      <div class="apuesta-info">
+        <div class="apuesta-evento">${o.seleccion} — <span style="color:var(--yellow)">${parseFloat(o.cuotaCoolbet).toFixed(2)}</span></div>
+        <div class="apuesta-detalle">${o.evento} · CLV subió ${(parseFloat(o.clv) - parseFloat(o.clvOriginal)).toFixed(1)}pp</div>
+        <div style="font-size:10px;color:var(--yellow);margin-top:2px;">
+          Stake extra sugerido: $${o.stakeExtra.toLocaleString('es-CL')} · CLV actual: +${parseFloat(o.clv).toFixed(1)}%
+        </div>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--yellow);text-align:right;">
+        📈
+      </div>
+    </div>
+  `).join('');
 }
 
 // ==================== TRACKER ====================
