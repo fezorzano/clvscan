@@ -719,6 +719,7 @@ const sheetsConectado = true;
 // ==================== ESTADO ====================
 let apuestas = []; // siempre desde Sheets, nunca localStorage
 let filtroActual = 'todos';
+let oportunidadesAumentar = []; // se guarda globalmente para mostrar en tracker
 
 // Datos demo para ilustrar el sistema
 const DEMO_OPORTUNIDADES = [
@@ -788,10 +789,15 @@ let oportunidadesActuales = [];
 
 // ==================== TABS ====================
 function cambiarTab(tab, el) {
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  console.log('cambiarTab llamado:', tab, el);
+  document.querySelectorAll('.tab-content').forEach(t => {
+    t.classList.remove('active');
+    console.log('removiendo active de:', t.id);
+  });
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById(`tab-${tab}`).classList.add('active');
   el.classList.add('active');
+  console.log('tab activo ahora:', tab);
   if (tab === 'tracker') cargarTrackerDesdeSheets();
 }
 
@@ -838,6 +844,7 @@ async function simularEscaneo() {
       const omitidas  = resp.oportunidades.length - oportunidadesFiltradas.length;
 
       oportunidadesActuales = nuevas;
+      oportunidadesAumentar = aumentar; // guardar globalmente
       renderOportunidades(nuevas);
       actualizarStats(nuevas);
       renderAumentarStake(aumentar);
@@ -1145,6 +1152,7 @@ async function cargarTrackerDesdeSheets() {
     if (resp?.ok && resp.tracker) {
       apuestas = resp.tracker.apuestas || [];
       renderHistorial(resp.tracker.resumen);
+      renderAumentarStake(oportunidadesAumentar); // mostrar oportunidades guardadas
     }
   } catch(e) {
     console.warn("Error cargando tracker:", e.message);
