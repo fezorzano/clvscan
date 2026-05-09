@@ -552,7 +552,7 @@
       <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
         <span id="scanIcon">⟳</span> SCAN
       </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v09/05 12:20</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v09/05 14:22</div>
     </div>
   </div>
 
@@ -613,15 +613,15 @@
     <div class="pl-summary">
       <div class="pl-card">
         <div class="pl-val" id="pl-total" style="color:var(--blue)">$0</div>
-        <div class="stat-label">P&L Total</div>
+        <div class="stat-label">P&L Real</div>
       </div>
       <div class="pl-card">
         <div class="pl-val" id="pl-yield" style="color:var(--blue)">0.0%</div>
         <div class="stat-label">Yield</div>
       </div>
       <div class="pl-card">
-        <div class="pl-val" id="pl-apuestas" style="color:var(--blue)">0</div>
-        <div class="stat-label">Apuestas</div>
+        <div class="pl-val" id="pl-teorico" style="color:var(--blue)">+$0</div>
+        <div class="stat-label">P&L Teórico</div>
       </div>
       <div class="pl-card">
         <div class="pl-val" id="pl-clv-prom" style="color:var(--blue)">0.0%</div>
@@ -633,11 +633,15 @@
       </div>
       <div class="pl-card">
         <div class="pl-val" id="pl-pendiente-stake" style="color:var(--yellow)">$0</div>
-        <div class="stat-label">En juego</div>
+        <div class="stat-label">En Juego</div>
       </div>
       <div class="pl-card">
-        <div class="pl-val" id="pl-pendiente-ev" style="color:var(--green)">+$0</div>
-        <div class="stat-label">EV pendiente</div>
+        <div class="pl-val" id="pl-volumen" style="color:var(--blue)">$0</div>
+        <div class="stat-label">Total Apostado</div>
+      </div>
+      <div class="pl-card">
+        <div class="pl-val" id="pl-pct-bankroll" style="color:var(--blue)">0.0%</div>
+        <div class="stat-label">% Meta Bono</div>
       </div>
     </div>
 
@@ -1270,44 +1274,66 @@ function renderHistorial(resumen) {
 }
 
 function actualizarPLSummary(resumen) {
+  const BANKROLL_REFERENCIA = 1200000;
+  const SALDO_INICIAL       = 400000;
+
   const r = resumen || {
-    plTotal: 0, yield: 0,
-    total: apuestas.length,
+    plTotal: 0, yield: 0, total: apuestas.length,
     clvProm: apuestas.length > 0
       ? apuestas.reduce((s,a) => s + (parseFloat(a.clv)||0), 0) / apuestas.length : 0
   };
 
-  const plEl = document.getElementById('pl-total');
+  // (1,1) P&L Real
+  const plEl  = document.getElementById('pl-total');
   const plAbs = Math.abs(r.plTotal);
   plEl.textContent = (r.plTotal >= 0 ? '+$' : '-$') + plAbs.toLocaleString('es-CL');
   plEl.className = 'pl-val ' + (r.plTotal > 0 ? 'positivo' : r.plTotal < 0 ? 'negativo' : 'neutral');
 
+  // (1,2) Yield
   const yieldEl = document.getElementById('pl-yield');
   yieldEl.textContent = (r.yield >= 0 ? '+' : '') + r.yield.toFixed(1) + '%';
   yieldEl.className = 'pl-val ' + (r.yield > 0 ? 'positivo' : r.yield < 0 ? 'negativo' : 'neutral');
 
-  document.getElementById('pl-apuestas').textContent = r.total;
+  // (2,1) P&L Teórico = Σ(EV% × Stake) de todas las apuestas
+  const plTeorico = apuestas.reduce((s, a) => s + (parseFloat(a.ev)||0) * a.stake / 100, 0);
+  const teoEl = document.getElementById('pl-teorico');
+  if (teoEl) {
+    teoEl.textContent = (plTeorico >= 0 ? '+$' : '-$') + Math.abs(Math.round(plTeorico)).toLocaleString('es-CL');
+    teoEl.className = 'pl-val ' + (plTeorico > 0 ? 'positivo' : plTeorico < 0 ? 'negativo' : 'neutral');
+  }
+
+  // (2,2) CLV Promedio
   document.getElementById('pl-clv-prom').textContent = '+' + (r.clvProm||0).toFixed(1) + '%';
 
-  // Pendientes: suma stake y EV esperado
+  // Pendientes para saldo y en juego
   const pendientes     = apuestas.filter(a => a.resultado === 'pendiente');
   const stakePendiente = pendientes.reduce((s, a) => s + a.stake, 0);
-  const evPendiente    = pendientes.reduce((s, a) => s + (parseFloat(a.ev)||0) * a.stake / 100, 0);
 
-  // Saldo estimado en Coolbet — flujo de caja real:
-  // Saldo = inicial + P&L resuelto - stakes pendientes (ya salieron de la cuenta)
-  const saldoInicial = 400000;
-  const saldoActual  = saldoInicial + r.plTotal - stakePendiente;
+  // (3,1) Saldo Coolbet = inicial + P&L resuelto - stakes pendientes
+  const saldoActual = SALDO_INICIAL + r.plTotal - stakePendiente;
   const saldoEl = document.getElementById('pl-saldo');
   if (saldoEl) {
     saldoEl.textContent = '$' + Math.max(0, saldoActual).toLocaleString('es-CL');
-    saldoEl.className = 'pl-val ' + (saldoActual >= saldoInicial ? 'positivo' : 'negativo');
+    saldoEl.className = 'pl-val ' + (saldoActual >= SALDO_INICIAL ? 'positivo' : 'negativo');
   }
 
+  // (3,2) En Juego
   const pendEl = document.getElementById('pl-pendiente-stake');
   if (pendEl) pendEl.textContent = '$' + stakePendiente.toLocaleString('es-CL');
-  const evEl = document.getElementById('pl-pendiente-ev');
-  if (evEl) evEl.textContent = '+$' + Math.round(evPendiente).toLocaleString('es-CL');
+
+  // (4,1) Total apostado histórico
+  const volumenTotal = apuestas.reduce((s, a) => s + a.stake, 0);
+  const volEl = document.getElementById('pl-volumen');
+  if (volEl) volEl.textContent = '$' + volumenTotal.toLocaleString('es-CL');
+
+  // (4,2) % del bankroll de referencia ($1.200.000)
+  const pctBankroll = volumenTotal > 0 ? (volumenTotal / BANKROLL_REFERENCIA * 100) : 0;
+  const pctEl = document.getElementById('pl-pct-bankroll');
+  if (pctEl) {
+    pctEl.textContent = pctBankroll.toFixed(1) + '%';
+    pctEl.className = 'pl-val ' + (pctBankroll <= 100 ? 'neutral' : 'negativo');
+    pctEl.style.color = 'var(--blue)';
+  }
 }
 
 // ==================== UTILS ====================
