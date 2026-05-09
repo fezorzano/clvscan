@@ -812,8 +812,8 @@ async function simularEscaneo() {
 
         if (!apuestaPendiente) return o; // no apostada → mostrar normal
 
-        const clvActual   = parseFloat(o.clv);
-        const clvOriginal = parseFloat(apuestaPendiente.clv);
+        const clvActual   = parseFloat(o.clv);   // ya viene como % (ej: 4.5)
+        const clvOriginal = parseFloat(apuestaPendiente.clv); // ídem
 
         if (clvActual - clvOriginal > 2) {
           // CLV subió más de 2pp → sugerir aumentar stake
@@ -860,7 +860,7 @@ async function simularEscaneo() {
 
 function actualizarStats(ops) {
   document.getElementById('stat-total').textContent = ops.length;
-  document.getElementById('stat-verdes').textContent = ops.filter(o => o.nivel === 'verde').length;
+  document.getElementById('stat-verdes').textContent   = ops.filter(o => o.nivel === 'verde').length;
   document.getElementById('stat-amarillos').textContent = ops.filter(o => o.nivel === 'amarillo').length;
 }
 
@@ -898,18 +898,21 @@ function renderOportunidades(ops, error = false) {
     return;
   }
 
-  container.innerHTML = ops.map((o, i) => `
+  container.innerHTML = ops.map((o, i) => {
+    const clvPct = parseFloat(o.clv);
+    const evPct  = parseFloat(o.ev);
+    return `
     <div class="oportunidad-card ${o.nivel}" style="animation: fadeIn 0.3s ease ${i*0.05}s both;">
       <div class="card-header">
         <div>
           <div class="card-sport">${o.deporte} · ${o.fecha}</div>
           <div class="card-evento">${o.evento}</div>
           ${o.aumentar ? `<div style="font-size:10px;color:var(--yellow);margin-top:3px;">
-            📈 CLV subió ${(parseFloat(o.clv) - parseFloat(o.clvOriginal)).toFixed(1)}pp desde tu apuesta — considera aumentar stake
+            📈 CLV subió ${(clvPct - parseFloat(o.clvOriginal)).toFixed(1)}pp desde tu apuesta — considera aumentar stake
           </div>` : ''}
         </div>
         <div>
-          <div class="clv-badge">+${o.clv}%</div>
+          <div class="clv-badge">+${clvPct.toFixed(1)}%</div>
           <div class="clv-label">CLV</div>
         </div>
       </div>
@@ -919,20 +922,20 @@ function renderOportunidades(ops, error = false) {
           <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Apostar a</div>
           <div class="seleccion-nombre">${o.seleccion}</div>
         </div>
-        <div class="seleccion-cuota">${o.cuotaCoolbet.toFixed(2)}</div>
+        <div class="seleccion-cuota">${parseFloat(o.cuotaCoolbet).toFixed(2)}</div>
       </div>
 
       <div class="card-footer">
         <div class="footer-item">
           <div class="footer-val" style="color:var(--muted);font-size:11px;">
-            Pinn: ${o.cuotaPinnacle.toFixed(2)}
+            Pinn: ${parseFloat(o.cuotaPinnacle).toFixed(2)}
           </div>
           <div class="footer-label">Referencia</div>
         </div>
         <div class="footer-divider"></div>
         <div class="footer-item">
-          <div class="footer-val" style="color:${o.ev > 0 ? 'var(--green)' : 'var(--red)'}">
-            +${o.ev}%
+          <div class="footer-val" style="color:${evPct > 0 ? 'var(--green)' : 'var(--red)'}">
+            +${evPct.toFixed(1)}%
           </div>
           <div class="footer-label">Valor esp.</div>
         </div>
@@ -957,7 +960,7 @@ function renderOportunidades(ops, error = false) {
         </a>
       </div>
     </div>
-  `).join('');
+  `}).join('');
 }
 
 // ==================== COMUNICACIÓN CON GOOGLE SHEETS ====================
