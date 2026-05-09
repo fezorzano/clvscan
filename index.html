@@ -557,7 +557,6 @@
   <div class="nav">
     <div class="nav-tab active" onclick="cambiarTab('oportunidades', this)">📡 Scanner</div>
     <div class="nav-tab" onclick="cambiarTab('tracker', this)">📝 Tracker</div>
-    <div class="nav-tab" onclick="cambiarTab('config', this)">⚙️ Config</div>
   </div>
 
   <!-- TAB: OPORTUNIDADES -->
@@ -695,57 +694,6 @@
   </div>
 
   <!-- TAB: CONFIG -->
-  <div class="tab-content" id="tab-config">
-    <div class="section-title">Parámetros del Sistema</div>
-    <div class="config-panel">
-      <div class="config-row">
-        <span class="config-key">Bankroll actual</span>
-        <span class="config-val" id="cfg-bankroll">$500.000 CLP</span>
-      </div>
-      <div class="config-row">
-        <span class="config-key">Umbral CLV verde</span>
-        <span class="config-val">5.0%</span>
-      </div>
-      <div class="config-row">
-        <span class="config-key">Umbral CLV amarillo</span>
-        <span class="config-val">3.0%</span>
-      </div>
-      <div class="config-row">
-        <span class="config-key">Kelly fraccional</span>
-        <span class="config-val">25%</span>
-      </div>
-      <div class="config-row">
-        <span class="config-key">Casa principal</span>
-        <span class="config-val">Coolbet</span>
-      </div>
-      <div class="config-row">
-        <span class="config-key">Referencia CLV</span>
-        <span class="config-val">Pinnacle</span>
-      </div>
-      <div class="config-row">
-        <span class="config-key">Fuente de datos</span>
-        <span class="config-val">The Odds API</span>
-      </div>
-      <div class="config-row">
-        <span class="config-key">Frecuencia escaneo</span>
-        <span class="config-val">Cada 1 hora</span>
-      </div>
-    </div>
-
-    <div class="section-title">Instrucciones</div>
-    <div class="config-panel">
-      <div style="font-size:13px; line-height:1.8; color:var(--text2);">
-        <p style="margin-bottom:8px;"><span style="color:var(--green);">01.</span> Regístrate en <strong style="color:var(--text)">the-odds-api.com</strong> → obtén tu API key gratuita.</p>
-        <p style="margin-bottom:8px;"><span style="color:var(--green);">02.</span> Crea un nuevo Google Sheets → <strong style="color:var(--text)">Extensiones → Apps Script</strong>.</p>
-        <p style="margin-bottom:8px;"><span style="color:var(--green);">03.</span> Pega el contenido de <strong style="color:var(--text)">CLV_System_AppsScript.js</strong> en el editor.</p>
-        <p style="margin-bottom:8px;"><span style="color:var(--green);">04.</span> Reemplaza <strong style="color:var(--text)">TU_API_KEY_AQUI</strong> y <strong style="color:var(--text)">TU_EMAIL@gmail.com</strong> en CONFIG.</p>
-        <p style="margin-bottom:8px;"><span style="color:var(--green);">05.</span> Ejecuta <strong style="color:var(--text)">configurarTrigger()</strong> una sola vez → escaneo automático cada hora activo.</p>
-        <p style="margin-bottom:8px;"><span style="color:var(--green);">06.</span> En Apps Script: <strong style="color:var(--text)">Implementar → Nueva implementación → Aplicación web</strong>. Ejecutar como: Yo. Acceso: Cualquier persona. Copia la URL generada.</p>
-        <p style="margin-bottom:8px;"><span style="color:var(--green);">07.</span> Pega esa URL en la constante <strong style="color:var(--text)">WEB_APP_URL</strong> al inicio del JS de este dashboard.</p>
-        <p><span style="color:var(--green);">08.</span> Listo. Al tocar "Registrar apuesta" en una card, los datos van directo a tu Google Sheets.</p>
-      </div>
-    </div>
-  </div>
 
 </div>
 
@@ -845,15 +793,45 @@ async function simularEscaneo() {
   mostrarToast('⏳ Cargando oportunidades desde Sheets...');
 
   try {
-    const resp = await obtenerOportunidadesSheets();
+    let resp = await obtenerOportunidadesSheets();
+
+    // Reintento automático si falla la primera vez
+    if (!resp?.ok) {
+      await new Promise(r => setTimeout(r, 2000)); // esperar 2 segundos
+      resp = await obtenerOportunidadesSheets();
+    }
 
     if (resp?.ok && resp.oportunidades?.length > 0) {
-      oportunidadesActuales = resp.oportunidades;
+      // Cruzar oportunidades con apuestas pendientes del tracker
+      const oportunidadesFiltradas = resp.oportunidades.map(o => {
+        const apuestaPendiente = apuestas.find(a =>
+          a.evento === o.evento &&
+          a.seleccion === o.seleccion &&
+          a.resultado === "pendiente"
+        );
+
+        if (!apuestaPendiente) return o; // no apostada → mostrar normal
+
+        const clvActual   = parseFloat(o.clv);
+        const clvOriginal = parseFloat(apuestaPendiente.clv);
+
+        if (clvActual - clvOriginal > 2) {
+          // CLV subió más de 2pp → sugerir aumentar stake
+          const stakeExtra = Math.max(0, o.stake - apuestaPendiente.stake);
+          return { ...o, aumentar: true, stakeExtra, clvOriginal };
+        }
+
+        return null; // ya apostada sin mejora → omitir
+      }).filter(Boolean);
+
+      const omitidas = resp.oportunidades.length - oportunidadesFiltradas.length;
+      oportunidadesActuales = oportunidadesFiltradas;
       renderOportunidades(oportunidadesActuales);
       actualizarStats(oportunidadesActuales);
+      const msgOmitidas = omitidas > 0 ? ` · ${omitidas} ya apostada(s)` : '';
       document.getElementById('updateTime').textContent =
-        `Actualizado: ${new Date().toLocaleTimeString('es-CL', {hour:'2-digit',minute:'2-digit'})} · ${oportunidadesActuales.length} mercados con valor`;
-      mostrarToast(`✅ ${oportunidadesActuales.length} oportunidades cargadas`);
+        `Actualizado: ${new Date().toLocaleTimeString('es-CL', {hour:'2-digit',minute:'2-digit'})} · ${oportunidadesActuales.length} mercados con valor${msgOmitidas}`;
+      mostrarToast(`✅ ${oportunidadesActuales.length} oportunidades cargadas${omitidas > 0 ? ` (${omitidas} omitidas)` : ''}`);
     } else if (resp?.ok && resp.oportunidades?.length === 0) {
       oportunidadesActuales = [];
       renderOportunidades([]);
@@ -862,17 +840,18 @@ async function simularEscaneo() {
         `Actualizado: ${new Date().toLocaleTimeString('es-CL', {hour:'2-digit',minute:'2-digit'})} · Sin oportunidades en este momento`;
       mostrarToast('Sin oportunidades en este momento');
     } else {
-      // Fallback a demo si Sheets no responde
-      oportunidadesActuales = [...DEMO_OPORTUNIDADES];
-      renderOportunidades(oportunidadesActuales);
-      actualizarStats(oportunidadesActuales);
-      mostrarToast('⚠ Usando datos demo — Sheets no disponible');
+      oportunidadesActuales = [];
+      renderOportunidades([], true);
+      actualizarStats([]);
+      document.getElementById('updateTime').textContent = 'Error de conexión — intenta de nuevo';
+      mostrarToast('⚠ Error de conexión');
     }
   } catch(e) {
-    oportunidadesActuales = [...DEMO_OPORTUNIDADES];
-    renderOportunidades(oportunidadesActuales);
-    actualizarStats(oportunidadesActuales);
-    mostrarToast('⚠ Error de conexión — mostrando demo');
+    oportunidadesActuales = [];
+    renderOportunidades([], true);
+    actualizarStats([]);
+    document.getElementById('updateTime').textContent = 'Error de conexión — intenta de nuevo';
+    mostrarToast('⚠ Error de conexión');
   }
 
   btn.classList.remove('scanning');
@@ -899,14 +878,23 @@ function filtrar(tipo, el) {
   renderOportunidades(filtradas);
 }
 
-function renderOportunidades(ops) {
+function renderOportunidades(ops, error = false) {
   const container = document.getElementById('oportunidades-container');
 
   if (ops.length === 0) {
-    container.innerHTML = `<div class="empty-state">
-      <div class="empty-icon">🔍</div>
-      <div class="empty-text">Sin oportunidades en este filtro</div>
-    </div>`;
+    container.innerHTML = error
+      ? `<div class="empty-state">
+          <div class="empty-icon">⚠️</div>
+          <div class="empty-text" style="color:var(--red);">
+            Error de conexión con Google Sheets.<br>Intenta presionar SCAN de nuevo.
+          </div>
+        </div>`
+      : `<div class="empty-state">
+          <div class="empty-icon">📡</div>
+          <div class="empty-text">
+            Sin oportunidades en este momento.<br>Próximo escaneo automático a las 07:00 o 19:00.
+          </div>
+        </div>`;
     return;
   }
 
@@ -916,6 +904,9 @@ function renderOportunidades(ops) {
         <div>
           <div class="card-sport">${o.deporte} · ${o.fecha}</div>
           <div class="card-evento">${o.evento}</div>
+          ${o.aumentar ? `<div style="font-size:10px;color:var(--yellow);margin-top:3px;">
+            📈 CLV subió ${(parseFloat(o.clv) - parseFloat(o.clvOriginal)).toFixed(1)}pp desde tu apuesta — considera aumentar stake
+          </div>` : ''}
         </div>
         <div>
           <div class="clv-badge">+${o.clv}%</div>
@@ -950,7 +941,7 @@ function renderOportunidades(ops) {
           <div class="footer-val" style="color:var(--blue)">
             $${o.stake.toLocaleString('es-CL')}
           </div>
-          <div class="footer-label">Kelly 25%</div>
+          <div class="footer-label">${o.aumentar ? 'Stake extra' : 'Kelly 25%'}</div>
         </div>
       </div>
 
@@ -974,7 +965,9 @@ async function llamarSheets(params) {
   if (!sheetsConectado) return null;
   try {
     const query = new URLSearchParams(params).toString();
-    const res   = await fetch(`${WEB_APP_URL}?${query}`);
+    const res   = await fetch(`${WEB_APP_URL}?${query}`, {
+      redirect: "follow",
+    });
     return await res.json();
   } catch(e) {
     console.warn("Error conectando con Sheets:", e.message);
@@ -983,7 +976,16 @@ async function llamarSheets(params) {
 }
 
 async function obtenerOportunidadesSheets() {
-  return await llamarSheets({ accion: "obtenerOportunidades" });
+  if (!sheetsConectado) return null;
+  try {
+    const res = await fetch(`${WEB_APP_URL}?accion=obtenerOportunidades`, {
+      redirect: "follow",
+    });
+    return await res.json();
+  } catch(e) {
+    console.warn("Error obteniendo oportunidades:", e.message);
+    return null;
+  }
 }
 
 // ==================== COOLBET URL ====================
@@ -1042,6 +1044,8 @@ function getCoolbetUrl(deporte) {
   if (d.includes("africa cup"))          return `${base}/futbol/africa/copa-africa`;
   if (d.includes("world cup") || d.includes("mundial") || d.includes("fifa")) return `${base}/futbol/mundial`;
   if (d.includes("⚽"))                  return `${base}/futbol`;
+  if (d.includes("🏀") || d.includes("nba"))              return `${base}/baloncesto/estados-unidos/nba`;
+  if (d.includes("euroliga"))                              return `${base}/baloncesto/europa/euroliga`;
   if (d.includes("🎾") || d.includes("atp") || d.includes("wta") || d.includes("roland") || d.includes("wimbledon") || d.includes("open")) return `${base}/tenis`;
 
   return base;
@@ -1178,6 +1182,7 @@ function renderHistorial(resumen) {
       <div class="apuesta-info">
         <div class="apuesta-evento">${a.seleccion} — <span style="color:var(--blue)">${a.coolbet}</span></div>
         <div class="apuesta-detalle">${a.evento} · CLV +${a.clv}% · $${a.stake.toLocaleString('es-CL')}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;">📅 ${a.fechaEvento}</div>
         ${a.resultado === 'pendiente' ? `
           <div style="display:flex;gap:6px;margin-top:6px;">
             <button onclick="marcarResultado('${a.id}','ganada')" style="background:var(--green-dim);border:1px solid var(--green);color:var(--green);font-size:11px;padding:4px 10px;border-radius:4px;cursor:pointer;">✓ Ganada</button>
