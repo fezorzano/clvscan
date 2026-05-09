@@ -585,6 +585,8 @@
       <button class="filter-btn" onclick="filtrar('amarillo', this)">🟡 Posible</button>
       <button class="filter-btn" onclick="filtrar('futbol', this)">⚽ Fútbol</button>
       <button class="filter-btn" onclick="filtrar('tenis', this)">🎾 Tenis</button>
+      <button class="filter-btn" onclick="filtrar('basket', this)">🏀 Basket</button>
+    </div>
     </div>
 
     <div class="update-time" id="updateTime">Presiona SCAN para buscar oportunidades</div>
@@ -874,6 +876,7 @@ function filtrar(tipo, el) {
   if (tipo === 'amarillo') filtradas = filtradas.filter(o => o.nivel === 'amarillo');
   if (tipo === 'futbol')   filtradas = filtradas.filter(o => o.deporte.includes('⚽'));
   if (tipo === 'tenis')    filtradas = filtradas.filter(o => o.deporte.includes('🎾'));
+  if (tipo === 'basket')   filtradas = filtradas.filter(o => o.deporte.includes('🏀'));
 
   renderOportunidades(filtradas);
 }
@@ -919,7 +922,9 @@ function renderOportunidades(ops, error = false) {
 
       <div class="card-seleccion">
         <div>
-          <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">Apostar a</div>
+          <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px">
+            ${o.casaPrincipal && o.casaPrincipal !== 'coolbet' ? `⚠️ Verificar en Coolbet (ref: ${o.casaPrincipal})` : 'Apostar a'}
+          </div>
           <div class="seleccion-nombre">${o.seleccion}</div>
         </div>
         <div class="seleccion-cuota">${parseFloat(o.cuotaCoolbet).toFixed(2)}</div>
