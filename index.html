@@ -552,7 +552,7 @@
       <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
         <span id="scanIcon">⟳</span> SCAN
       </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v09/05 12:07</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v09/05 12:20</div>
     </div>
   </div>
 
@@ -626,6 +626,18 @@
       <div class="pl-card">
         <div class="pl-val" id="pl-clv-prom" style="color:var(--blue)">0.0%</div>
         <div class="stat-label">CLV Prom</div>
+      </div>
+      <div class="pl-card">
+        <div class="pl-val" id="pl-saldo" style="color:var(--blue)">$400.000</div>
+        <div class="stat-label">Saldo Coolbet</div>
+      </div>
+      <div class="pl-card">
+        <div class="pl-val" id="pl-pendiente-stake" style="color:var(--yellow)">$0</div>
+        <div class="stat-label">En juego</div>
+      </div>
+      <div class="pl-card">
+        <div class="pl-val" id="pl-pendiente-ev" style="color:var(--green)">+$0</div>
+        <div class="stat-label">EV pendiente</div>
       </div>
     </div>
 
@@ -821,22 +833,25 @@ async function simularEscaneo() {
     if (resp?.ok && resp.oportunidades?.length > 0) {
       // Cruzar oportunidades con apuestas pendientes del tracker
       const oportunidadesFiltradas = resp.oportunidades.map(o => {
-        const apuestaPendiente = apuestas.find(a =>
+        // Sumar todas las apuestas pendientes para este evento+selección
+        const pendientes = apuestas.filter(a =>
           a.evento === o.evento &&
           a.seleccion === o.seleccion &&
           a.resultado === "pendiente"
         );
 
-        if (!apuestaPendiente) return { ...o, tipo: 'nueva' };
+        if (pendientes.length === 0) return { ...o, tipo: 'nueva' };
 
+        const stakeTotalPendiente = pendientes.reduce((s, a) => s + a.stake, 0);
+        const clvOriginal = parseFloat(pendientes[0].clv); // CLV de la primera apuesta
         const clvActual   = parseFloat(o.clv);
-        const clvOriginal = parseFloat(apuestaPendiente.clv);
 
         if (clvActual - clvOriginal > 2) {
-          return { ...o, tipo: 'aumentar', clvOriginal, stakeExtra: Math.max(0, o.stake - apuestaPendiente.stake), apuestaId: apuestaPendiente.id };
+          const stakeExtra = Math.max(0, o.stake - stakeTotalPendiente);
+          return { ...o, tipo: 'aumentar', clvOriginal, stakeExtra, stakeTotalPendiente };
         }
 
-        return null; // ya apostada sin mejora → omitir
+        return null;
       }).filter(Boolean);
 
       const nuevas    = oportunidadesFiltradas.filter(o => o.tipo === 'nueva');
@@ -1263,7 +1278,8 @@ function actualizarPLSummary(resumen) {
   };
 
   const plEl = document.getElementById('pl-total');
-  plEl.textContent = (r.plTotal >= 0 ? '+' : '') + '$' + Math.abs(r.plTotal).toLocaleString('es-CL');
+  const plAbs = Math.abs(r.plTotal);
+  plEl.textContent = (r.plTotal >= 0 ? '+$' : '-$') + plAbs.toLocaleString('es-CL');
   plEl.className = 'pl-val ' + (r.plTotal > 0 ? 'positivo' : r.plTotal < 0 ? 'negativo' : 'neutral');
 
   const yieldEl = document.getElementById('pl-yield');
@@ -1272,6 +1288,26 @@ function actualizarPLSummary(resumen) {
 
   document.getElementById('pl-apuestas').textContent = r.total;
   document.getElementById('pl-clv-prom').textContent = '+' + (r.clvProm||0).toFixed(1) + '%';
+
+  // Pendientes: suma stake y EV esperado
+  const pendientes     = apuestas.filter(a => a.resultado === 'pendiente');
+  const stakePendiente = pendientes.reduce((s, a) => s + a.stake, 0);
+  const evPendiente    = pendientes.reduce((s, a) => s + (parseFloat(a.ev)||0) * a.stake / 100, 0);
+
+  // Saldo estimado en Coolbet — flujo de caja real:
+  // Saldo = inicial + P&L resuelto - stakes pendientes (ya salieron de la cuenta)
+  const saldoInicial = 400000;
+  const saldoActual  = saldoInicial + r.plTotal - stakePendiente;
+  const saldoEl = document.getElementById('pl-saldo');
+  if (saldoEl) {
+    saldoEl.textContent = '$' + Math.max(0, saldoActual).toLocaleString('es-CL');
+    saldoEl.className = 'pl-val ' + (saldoActual >= saldoInicial ? 'positivo' : 'negativo');
+  }
+
+  const pendEl = document.getElementById('pl-pendiente-stake');
+  if (pendEl) pendEl.textContent = '$' + stakePendiente.toLocaleString('es-CL');
+  const evEl = document.getElementById('pl-pendiente-ev');
+  if (evEl) evEl.textContent = '+$' + Math.round(evPendiente).toLocaleString('es-CL');
 }
 
 // ==================== UTILS ====================
