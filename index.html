@@ -1067,10 +1067,10 @@ function calcularKelly() {
 
   const probJusta = 1 / pinnacle;
   const clv  = ((coolbet / pinnacle) - 1) * 100;
-  const ev   = ((probJusta * coolbet) - 1) * 100;
   // Kelly logarítmico: f = EV × k / ln(cuota), k=0.5, tope 4%
-  const ev    = (probJusta * coolbet) - 1;
-  const f     = ev > 0 ? Math.min(ev * 0.5 / Math.log(coolbet), 0.04) : 0;
+  const evDecimal = (probJusta * coolbet) - 1;
+  const ev   = evDecimal * 100;
+  const f    = evDecimal > 0 ? Math.min(evDecimal * 0.5 / Math.log(coolbet), 0.04) : 0;
   const stake = Math.round(500000 * f / 1000) * 1000;
 
   document.getElementById('k-clv').textContent   = (clv >= 0 ? '+' : '') + clv.toFixed(1) + '%';
