@@ -944,7 +944,7 @@ function renderOportunidades(ops, error = false) {
           <div class="footer-val" style="color:var(--blue)">
             $${o.stake.toLocaleString('es-CL')}
           </div>
-          <div class="footer-label">${o.aumentar ? 'Stake extra' : 'Kelly 25%'}</div>
+          <div class="footer-label">${o.aumentar ? 'Stake extra' : 'Kelly log'}</div>
         </div>
       </div>
 
@@ -1068,9 +1068,10 @@ function calcularKelly() {
   const probJusta = 1 / pinnacle;
   const clv  = ((coolbet / pinnacle) - 1) * 100;
   const ev   = ((probJusta * coolbet) - 1) * 100;
-  const b    = coolbet - 1;
-  const kelly = Math.max(0, (probJusta * coolbet - 1) / b);
-  const stake = Math.round(500000 * kelly * 0.25 / 1000) * 1000;
+  // Kelly logarítmico: f = EV × k / ln(cuota), k=0.5, tope 4%
+  const ev    = (probJusta * coolbet) - 1;
+  const f     = ev > 0 ? Math.min(ev * 0.5 / Math.log(coolbet), 0.04) : 0;
+  const stake = Math.round(500000 * f / 1000) * 1000;
 
   document.getElementById('k-clv').textContent   = (clv >= 0 ? '+' : '') + clv.toFixed(1) + '%';
   document.getElementById('k-ev').textContent    = (ev  >= 0 ? '+' : '') + ev.toFixed(1)  + '%';
