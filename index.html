@@ -552,7 +552,7 @@
       <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
         <span id="scanIcon">⟳</span> SCAN
       </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v09/05 14:22</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v10/05 18:21</div>
     </div>
   </div>
 
@@ -1303,7 +1303,12 @@ function actualizarPLSummary(resumen) {
   }
 
   // (2,2) CLV Promedio
-  document.getElementById('pl-clv-prom').textContent = '+' + (r.clvProm||0).toFixed(1) + '%';
+  // CLV promedio ponderado por stake
+  const volumenTotal2 = apuestas.reduce((s, a) => s + a.stake, 0);
+  const clvPonderado  = volumenTotal2 > 0
+    ? apuestas.reduce((s, a) => s + (parseFloat(a.clv)||0) * a.stake, 0) / volumenTotal2
+    : 0;
+  document.getElementById('pl-clv-prom').textContent = '+' + clvPonderado.toFixed(1) + '%';
 
   // Pendientes para saldo y en juego
   const pendientes     = apuestas.filter(a => a.resultado === 'pendiente');
