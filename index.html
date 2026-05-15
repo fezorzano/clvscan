@@ -552,7 +552,7 @@
       <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
         <span id="scanIcon">⟳</span> SCAN
       </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v12/05 07:10</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v15/05 15:47</div>
     </div>
   </div>
 
@@ -573,11 +573,11 @@
       </div>
       <div class="stat-card">
         <div class="stat-val" id="stat-verdes" style="color:var(--green)">—</div>
-        <div class="stat-label">CLV &gt;5%</div>
+        <div class="stat-label">OLV &gt;5%</div>
       </div>
       <div class="stat-card">
         <div class="stat-val" id="stat-amarillos" style="color:var(--yellow)">—</div>
-        <div class="stat-label">CLV &gt;3%</div>
+        <div class="stat-label">OLV &gt;3%</div>
       </div>
     </div>
 
@@ -611,7 +611,7 @@
         <div class="empty-icon">📡</div>
         <div class="empty-text">
           El scanner escanea automáticamente<br>a las 07:00, 13:00 y 19:00 hora Chile.<br><br>
-          Aquí verás las oportunidades<br>con CLV positivo detectadas.
+          Aquí verás las oportunidades<br>con OLV positivo detectadas.
         </div>
       </div>
     </div>
@@ -637,7 +637,7 @@
       </div>
       <div class="pl-card">
         <div class="pl-val" id="pl-clv-prom" style="color:var(--blue)">0.0%</div>
-        <div class="stat-label">CLV Prom</div>
+        <div class="stat-label">OLV Prom</div>
       </div>
       <div class="pl-card">
         <div class="pl-val" id="pl-saldo" style="color:var(--blue)">$400.000</div>
@@ -674,7 +674,7 @@
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;">
           <div class="stat-card">
             <div class="stat-val" id="k-clv" style="font-size:18px;color:var(--green)">—</div>
-            <div class="stat-label">CLV</div>
+            <div class="stat-label">OLV</div>
           </div>
           <div class="stat-card">
             <div class="stat-val" id="k-ev" style="font-size:18px;color:var(--blue)">—</div>
@@ -955,12 +955,12 @@ function renderOportunidades(ops, error = false) {
           <div class="card-sport">${o.deporte} · ${o.fecha}</div>
           <div class="card-evento">${o.evento}</div>
           ${o.aumentar ? `<div style="font-size:10px;color:var(--yellow);margin-top:3px;">
-            📈 CLV subió ${(clvPct - parseFloat(o.clvOriginal)).toFixed(1)}pp desde tu apuesta — considera aumentar stake
+            📈 OLV subió ${(clvPct - parseFloat(o.clvOriginal)).toFixed(1)}pp desde tu apuesta — considera aumentar stake
           </div>` : ''}
         </div>
         <div>
           <div class="clv-badge">+${clvPct.toFixed(1)}%</div>
-          <div class="clv-label">CLV</div>
+          <div class="clv-label">OLV</div>
         </div>
       </div>
 
@@ -1224,7 +1224,7 @@ function renderAumentarStake(ops) {
           <div class="card-sport">${o.deporte} · ${o.fecha}</div>
           <div class="card-evento">${o.evento}</div>
           <div style="font-size:10px;color:var(--yellow);margin-top:3px;">
-            📈 CLV subió ${(parseFloat(o.clv) - parseFloat(o.clvOriginal)).toFixed(1)}pp — apuesta adicional sugerida
+            📈 OLV subió ${(parseFloat(o.clv) - parseFloat(o.clvOriginal)).toFixed(1)}pp — apuesta adicional sugerida
           </div>
         </div>
         <div>
@@ -1407,24 +1407,16 @@ function actualizarPLSummary(resumen) {
   plEl.textContent = (r.plTotal >= 0 ? '+$' : '-$') + plAbs.toLocaleString('es-CL');
   plEl.className = 'pl-val ' + (r.plTotal > 0 ? 'positivo' : r.plTotal < 0 ? 'negativo' : 'neutral');
 
-  // (1,2) Yield
+  // (1,2) Yield = P&L Real / Volumen resuelto (solo apuestas cerradas)
+  const volumenResuelto = cerradas.reduce((s, a) => s + a.stake, 0);
+  const yieldReal = volumenResuelto > 0 ? (r.plTotal / volumenResuelto * 100) : 0;
   const yieldEl = document.getElementById('pl-yield');
-  yieldEl.textContent = (r.yield >= 0 ? '+' : '') + r.yield.toFixed(1) + '%';
-  yieldEl.className = 'pl-val ' + (r.yield > 0 ? 'positivo' : r.yield < 0 ? 'negativo' : 'neutral');
+  yieldEl.textContent = (yieldReal >= 0 ? '+' : '') + yieldReal.toFixed(1) + '%';
+  yieldEl.className = 'pl-val ' + (yieldReal > 0 ? 'positivo' : yieldReal < 0 ? 'negativo' : 'neutral');
 
-  // (2,1) P&L Teórico = Σ(EV% × Stake) de todas las apuestas
-  const plTeorico = apuestas.reduce((s, a) => s + (parseFloat(a.ev)||0) * a.stake / 100, 0);
-  const teoEl = document.getElementById('pl-teorico');
-  if (teoEl) {
-    teoEl.textContent = (plTeorico >= 0 ? '+$' : '-$') + Math.abs(Math.round(plTeorico)).toLocaleString('es-CL');
-    teoEl.className = 'pl-val ' + (plTeorico > 0 ? 'positivo' : plTeorico < 0 ? 'negativo' : 'neutral');
-  }
-
-  // (2,2) CLV Promedio
-  // CLV promedio ponderado por stake
-  const volumenTotal2 = apuestas.reduce((s, a) => s + a.stake, 0);
-  const clvPonderado  = volumenTotal2 > 0
-    ? apuestas.reduce((s, a) => s + (parseFloat(a.clv)||0) * a.stake, 0) / volumenTotal2
+  // (2,2) CLV ponderado solo sobre resueltas
+  const clvPonderado = volumenResuelto > 0
+    ? cerradas.reduce((s, a) => s + (parseFloat(a.clv)||0) * a.stake, 0) / volumenResuelto
     : 0;
   document.getElementById('pl-clv-prom').textContent = '+' + clvPonderado.toFixed(1) + '%';
 
