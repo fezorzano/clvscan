@@ -552,7 +552,7 @@
       <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
         <span id="scanIcon">⟳</span> SCAN
       </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v15/05 15:47</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v15/05 15:59</div>
     </div>
   </div>
 
@@ -1396,10 +1396,15 @@ function actualizarPLSummary(resumen) {
   const SALDO_INICIAL       = 400000;
 
   const r = resumen || {
-    plTotal: 0, yield: 0, total: apuestas.length,
-    clvProm: apuestas.length > 0
-      ? apuestas.reduce((s,a) => s + (parseFloat(a.clv)||0), 0) / apuestas.length : 0
+    plTotal: 0, yield: 0, total: apuestas.length, clvProm: 0
   };
+
+  // Base: apuestas resueltas (misma base para yield, OLV y P&L teórico)
+  const cerradas        = apuestas.filter(a => a.resultado !== 'pendiente');
+  const pendientes      = apuestas.filter(a => a.resultado === 'pendiente');
+  const volumenResuelto = cerradas.reduce((s, a) => s + a.stake, 0);
+  const stakePendiente  = pendientes.reduce((s, a) => s + a.stake, 0);
+  const volumenTotal    = apuestas.reduce((s, a) => s + a.stake, 0);
 
   // (1,1) P&L Real
   const plEl  = document.getElementById('pl-total');
@@ -1407,22 +1412,25 @@ function actualizarPLSummary(resumen) {
   plEl.textContent = (r.plTotal >= 0 ? '+$' : '-$') + plAbs.toLocaleString('es-CL');
   plEl.className = 'pl-val ' + (r.plTotal > 0 ? 'positivo' : r.plTotal < 0 ? 'negativo' : 'neutral');
 
-  // (1,2) Yield = P&L Real / Volumen resuelto (solo apuestas cerradas)
-  const volumenResuelto = cerradas.reduce((s, a) => s + a.stake, 0);
+  // (1,2) Yield = P&L Real / Volumen resuelto
   const yieldReal = volumenResuelto > 0 ? (r.plTotal / volumenResuelto * 100) : 0;
   const yieldEl = document.getElementById('pl-yield');
   yieldEl.textContent = (yieldReal >= 0 ? '+' : '') + yieldReal.toFixed(1) + '%';
   yieldEl.className = 'pl-val ' + (yieldReal > 0 ? 'positivo' : yieldReal < 0 ? 'negativo' : 'neutral');
 
-  // (2,2) CLV ponderado solo sobre resueltas
-  const clvPonderado = volumenResuelto > 0
+  // (2,1) P&L Teórico = Σ(EV% × Stake) solo resueltas
+  const plTeorico = cerradas.reduce((s, a) => s + (parseFloat(a.ev)||0) * a.stake / 100, 0);
+  const teoEl = document.getElementById('pl-teorico');
+  if (teoEl) {
+    teoEl.textContent = (plTeorico >= 0 ? '+$' : '-$') + Math.abs(Math.round(plTeorico)).toLocaleString('es-CL');
+    teoEl.className = 'pl-val ' + (plTeorico > 0 ? 'positivo' : plTeorico < 0 ? 'negativo' : 'neutral');
+  }
+
+  // (2,2) OLV ponderado solo sobre resueltas
+  const olvPonderado = volumenResuelto > 0
     ? cerradas.reduce((s, a) => s + (parseFloat(a.clv)||0) * a.stake, 0) / volumenResuelto
     : 0;
-  document.getElementById('pl-clv-prom').textContent = '+' + clvPonderado.toFixed(1) + '%';
-
-  // Pendientes para saldo y en juego
-  const pendientes     = apuestas.filter(a => a.resultado === 'pendiente');
-  const stakePendiente = pendientes.reduce((s, a) => s + a.stake, 0);
+  document.getElementById('pl-clv-prom').textContent = '+' + olvPonderado.toFixed(1) + '%';
 
   // (3,1) Saldo Coolbet = inicial + P&L resuelto - stakes pendientes
   const saldoActual = SALDO_INICIAL + r.plTotal - stakePendiente;
@@ -1437,16 +1445,15 @@ function actualizarPLSummary(resumen) {
   if (pendEl) pendEl.textContent = '$' + stakePendiente.toLocaleString('es-CL');
 
   // (4,1) Total apostado histórico
-  const volumenTotal = apuestas.reduce((s, a) => s + a.stake, 0);
   const volEl = document.getElementById('pl-volumen');
   if (volEl) volEl.textContent = '$' + volumenTotal.toLocaleString('es-CL');
 
-  // (4,2) % del bankroll de referencia ($1.200.000)
+  // (4,2) % Meta Bono ($1.200.000)
   const pctBankroll = volumenTotal > 0 ? (volumenTotal / BANKROLL_REFERENCIA * 100) : 0;
   const pctEl = document.getElementById('pl-pct-bankroll');
   if (pctEl) {
     pctEl.textContent = pctBankroll.toFixed(1) + '%';
-    pctEl.className = 'pl-val ' + (pctBankroll <= 100 ? 'neutral' : 'negativo');
+    pctEl.className = 'pl-val neutral';
     pctEl.style.color = 'var(--blue)';
   }
 }
