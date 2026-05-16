@@ -552,7 +552,7 @@
       <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
         <span id="scanIcon">⟳</span> SCAN
       </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v16/05 08:01</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v16/05 08:10</div>
     </div>
   </div>
 
@@ -870,6 +870,7 @@ async function simularEscaneo() {
 
         if (clvActual - clvOriginal > 2) {
           const stakeExtra = Math.max(0, o.stake - stakeTotalPendiente);
+          if (stakeExtra === 0) return null; // ya apostado suficiente → omitir
           return { ...o, tipo: 'aumentar', clvOriginal, stakeExtra, stakeTotalPendiente };
         }
 
