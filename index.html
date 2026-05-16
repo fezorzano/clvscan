@@ -552,7 +552,7 @@
       <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
         <span id="scanIcon">⟳</span> SCAN
       </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v16/05 08:10</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v16/05 08:26</div>
     </div>
   </div>
 
@@ -951,7 +951,7 @@ function renderOportunidades(ops, error = false) {
       : `<div class="empty-state">
           <div class="empty-icon">📡</div>
           <div class="empty-text">
-            Sin oportunidades en este momento.<br>Próximo escaneo automático a las 07:00 o 19:00.
+            Sin oportunidades en este momento.<br>Próximo escaneo automático a las 07:00, 13:00 o 19:00.
           </div>
         </div>`;
     return;
@@ -1143,15 +1143,10 @@ function renderKeys(e) {
   const keysHtml = e.keys.map(k => {
     const color = k.estado === 'ok'      ? 'var(--green)'
                 : k.estado === 'baja'    ? 'var(--yellow)'
-                : k.estado === 'riesgo'  ? 'var(--yellow)'
                 : k.estado === 'critica' ? 'var(--red)'
-                : 'var(--muted)'; // agotada
+                : 'var(--muted)';
 
-    const pct     = Math.min(100, Math.round(k.remaining / 500 * 100));
-    const alerta  = !k.alcanzaKey && !k.agotada
-      ? `<span style="color:var(--yellow);font-size:9px;"> ⚠ alcanza ${k.escaneosKey}/${k.escaneosEsperadosKey} escaneos</span>`
-      : '';
-
+    const pct = Math.min(100, Math.round(k.remaining / 500 * 100));
     return `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;">
         <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);width:24px;">K${k.idx}</div>
@@ -1160,7 +1155,7 @@ function renderKeys(e) {
             <div style="width:${pct}%;height:100%;background:${color};border-radius:3px;"></div>
           </div>
           <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">
-            ${k.agotada ? 'AGOTADA' : `${k.remaining} req · ${k.escaneosKey} escaneos`}${alerta}
+            ${k.agotada ? 'AGOTADA' : `${k.remaining} req · ${k.escaneosKey} escaneos posibles`}
           </div>
         </div>
       </div>`;
@@ -1173,7 +1168,7 @@ function renderKeys(e) {
       </div>
       ${keysHtml}
       <div style="font-size:9px;color:var(--muted);margin-top:8px;font-family:var(--font-mono);border-top:1px solid var(--border);padding-top:8px;">
-        Keys activas: ${e.keysActivas}/7 · Umbral mínimo por escaneo: ${e.REQ_POR_ESCANEO} req · Reset: ${e.diasRest} días
+        Keys activas: ${e.keysActivas}/${e.totalKeys} · Umbral mínimo por escaneo: ${e.REQ_POR_ESCANEO} req · Reset: ${e.diasRest} días · Escaneos: 07:00, 13:00 y 19:00
       </div>
     </div>`;
 }
@@ -1194,7 +1189,7 @@ function calcularKelly() {
   // Kelly logarítmico: f = EV × k / ln(cuota), k=0.7 (temporal rollover), tope 4%
   const evDecimal = (probJusta * coolbet) - 1;
   const ev   = evDecimal * 100;
-  const f    = evDecimal > 0 ? Math.min(evDecimal * 0.7 / Math.log(coolbet), 0.04) : 0;
+  const f    = evDecimal > 0 ? Math.min(evDecimal * 0.7 / Math.log(coolbet), 0.05) : 0;
   const stake = Math.round(500000 * f / 1000) * 1000;
 
   document.getElementById('k-clv').textContent   = (clv >= 0 ? '+' : '') + clv.toFixed(1) + '%';
