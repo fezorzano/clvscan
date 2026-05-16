@@ -552,7 +552,7 @@
       <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
         <span id="scanIcon">⟳</span> SCAN
       </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v15/05 15:59</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v16/05 08:01</div>
     </div>
   </div>
 
@@ -593,12 +593,6 @@
 
     <div class="update-time" id="updateTime">Presiona SCAN para buscar oportunidades</div>
 
-    <!-- Estado de API Keys -->
-    <div id="keys-panel" style="display:none;margin-bottom:16px;">
-      <div class="section-title">🔑 API Keys</div>
-      <div id="keys-container"></div>
-    </div>
-
     <!-- Cards -->
     <!-- Oportunidades para aumentar stake -->
     <div id="aumentar-section" style="display:none;margin-bottom:8px;">
@@ -614,6 +608,12 @@
           Aquí verás las oportunidades<br>con OLV positivo detectadas.
         </div>
       </div>
+    </div>
+
+    <!-- Estado de API Keys -->
+    <div id="keys-panel" style="display:none;margin-top:16px;">
+      <div class="section-title">🔑 API Keys</div>
+      <div id="keys-container"></div>
     </div>
 
   </div>
@@ -830,7 +830,18 @@ async function simularEscaneo() {
   btn.classList.add('scanning');
   icon.textContent = '◌';
   mostrarToast('⏳ Cargando oportunidades desde Sheets...');
-  cargarEstadoKeys(); // cargar estado keys en paralelo
+  cargarEstadoKeys();
+
+  // Asegurar que el tracker esté cargado antes de cruzar oportunidades
+  if (apuestas.length === 0) {
+    try {
+      const res  = await fetch(`${WEB_APP_URL}?accion=obtenerTracker`, { redirect: "follow" });
+      const resp = await res.json();
+      if (resp?.ok && resp.tracker) apuestas = resp.tracker.apuestas || [];
+    } catch(e) {
+      console.warn("No se pudo precargar tracker:", e.message);
+    }
+  }
 
   try {
     let resp = await obtenerOportunidadesSheets();
