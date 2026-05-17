@@ -552,7 +552,7 @@
       <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
         <span id="scanIcon">⟳</span> SCAN
       </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v17/05 18:34</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v17/05 18:37</div>
     </div>
   </div>
 
@@ -999,7 +999,7 @@ function renderCurvaPL(datos) {
     data: {
       labels,
       datasets: [
-        { label: 'P&L Real', data: plData, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)', tension: 0.3, fill: true, pointRadius: 2 },
+        { label: 'P&L Real',     data: plData,   borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)',  tension: 0.3, fill: true,  pointRadius: 2 },
         { label: 'P&L Teórico', data: teorData, borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,0.1)', tension: 0.3, fill: false, pointRadius: 2, borderDash: [4,4] }
       ]
     },
@@ -1013,25 +1013,33 @@ function renderCurvaPL(datos) {
             font: { size: 10 },
             usePointStyle: true,
             pointStyle: 'line',
-            generateLabels: chart => chart.data.datasets.map((ds, i) => ({
-              text: ds.label,
-              strokeStyle: ds.borderColor,
-              fillStyle: ds.borderColor,
-              color: ds.borderColor,
-              lineWidth: 2,
-              datasetIndex: i,
-              pointStyle: 'line',
-            }))
+            color: '#94a3b8',
+            generateLabels(chart) {
+              return chart.data.datasets.map((ds, i) => ({
+                text:        ds.label,
+                strokeStyle: ds.borderColor,
+                fillStyle:   'transparent',
+                color:       ds.borderColor,
+                hidden:      !chart.isDatasetVisible(i),
+                lineWidth:   2,
+                pointStyle:  'line',
+                datasetIndex: i,
+              }));
+            }
           }
         },
         tooltip: {
           mode: 'index',
           intersect: false,
           callbacks: {
-            label: ctx => `${ctx.dataset.label}: $${ctx.raw.toLocaleString('es-CL')}`,
-            labelColor: ctx => ({ borderColor: ctx.dataset.borderColor, backgroundColor: ctx.dataset.borderColor, borderWidth: 0, borderRadius: 0 }),
-          },
-          usePointStyle: true,
+            label(ctx) {
+              const color = ctx.dataset.borderColor;
+              return `${ctx.dataset.label}: $${ctx.raw.toLocaleString('es-CL')}`;
+            },
+            labelColor(ctx) {
+              return { borderColor: 'transparent', backgroundColor: ctx.dataset.borderColor };
+            }
+          }
         }
       },
       scales: {
