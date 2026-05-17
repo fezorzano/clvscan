@@ -207,11 +207,11 @@
     width: 3px;
   }
 
-  .oportunidad-card.verde::before { background: var(--green); }
-  .oportunidad-card.amarillo::before { background: var(--yellow); }
+  .oportunidad-card.verde::before { background: #f8fafc; }
+  .oportunidad-card.amarillo::before { background: #cbd5e1; }
 
-  .oportunidad-card.verde { border-color: rgba(0,255,135,0.2); }
-  .oportunidad-card.amarillo { border-color: rgba(255,224,102,0.15); }
+  .oportunidad-card.verde { border-color: rgba(248,250,252,0.2); }
+  .oportunidad-card.amarillo { border-color: rgba(203,213,225,0.15); }
 
   .card-header {
     display: flex;
@@ -243,8 +243,8 @@
     line-height: 1;
   }
 
-  .verde .clv-badge { color: var(--green); }
-  .amarillo .clv-badge { color: var(--yellow); }
+  .verde .clv-badge { color: #f8fafc; }
+  .amarillo .clv-badge { color: #cbd5e1; }
 
   .clv-label {
     font-size: 9px;
@@ -253,8 +253,8 @@
     margin-top: 2px;
   }
 
-  .verde .clv-label { color: var(--green); opacity: 0.7; }
-  .amarillo .clv-label { color: var(--yellow); opacity: 0.7; }
+  .verde .clv-label { color: #f8fafc; opacity: 0.5; }
+  .amarillo .clv-label { color: #cbd5e1; opacity: 0.5; }
 
   .card-seleccion {
     background: var(--surface2);
@@ -552,7 +552,7 @@
       <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
         <span id="scanIcon">⟳</span> SCAN
       </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v17/05 18:07</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v17/05 18:21</div>
     </div>
   </div>
 
@@ -573,11 +573,11 @@
         <div class="stat-label">Mercados</div>
       </div>
       <div class="stat-card">
-        <div class="stat-val" id="stat-verdes" style="color:var(--green)">—</div>
+        <div class="stat-val" id="stat-verdes" style="color:#f8fafc">—</div>
         <div class="stat-label">OLV &gt;5%</div>
       </div>
       <div class="stat-card">
-        <div class="stat-val" id="stat-amarillos" style="color:var(--yellow)">—</div>
+        <div class="stat-val" id="stat-amarillos" style="color:#cbd5e1">—</div>
         <div class="stat-label">OLV &gt;3%</div>
       </div>
     </div>
@@ -585,8 +585,8 @@
     <!-- Filters -->
     <div class="filters">
       <button class="filter-btn active" onclick="filtrar('todos', this)">Todos</button>
-      <button class="filter-btn" onclick="filtrar('verde', this)">🟢 Clara</button>
-      <button class="filter-btn" onclick="filtrar('amarillo', this)">🟡 Posible</button>
+      <button class="filter-btn" onclick="filtrar('verde', this)">● Clara</button>
+      <button class="filter-btn" onclick="filtrar('amarillo', this)">● Posible</button>
       <button class="filter-btn" onclick="filtrar('futbol', this)">⚽ Fútbol</button>
       <button class="filter-btn" onclick="filtrar('tenis', this)">🎾 Tenis</button>
       <button class="filter-btn" onclick="filtrar('basket', this)">🏀 Basket</button>
@@ -633,11 +633,11 @@
         <div class="stat-label">Yield</div>
       </div>
       <div class="pl-card">
-        <div class="pl-val" id="pl-teorico" style="color:var(--blue)">+$0</div>
+        <div class="pl-val" id="pl-teorico" style="color:#94a3b8">+$0</div>
         <div class="stat-label">P&L Teórico</div>
       </div>
       <div class="pl-card">
-        <div class="pl-val" id="pl-clv-prom" style="color:var(--blue)">0.0%</div>
+        <div class="pl-val" id="pl-clv-prom" style="color:#94a3b8">0.0%</div>
         <div class="stat-label">OLV Prom</div>
       </div>
       <div class="pl-card">
@@ -999,8 +999,8 @@ function renderCurvaPL(datos) {
     data: {
       labels,
       datasets: [
-        { label: 'P&L Real', data: plData, borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.1)', tension: 0.3, fill: true, pointRadius: 2 },
-        { label: 'P&L Teórico', data: teorData, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)', tension: 0.3, fill: true, pointRadius: 2, borderDash: [4,4] }
+        { label: 'P&L Real', data: plData, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)', tension: 0.3, fill: true, pointRadius: 2 },
+        { label: 'P&L Teórico', data: teorData, borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,0.1)', tension: 0.3, fill: false, pointRadius: 2, borderDash: [4,4] }
       ]
     },
     options: {
@@ -1052,8 +1052,8 @@ function renderBarrasOLV(datos) {
     data: {
       labels: rangos.map((r,i) => `${r.label} (${counts[i]})`),
       datasets: [
-        { label: 'P&L Real',    data: plReal.map(Math.round), backgroundColor: '#4ade80' },
-        { label: 'P&L Teórico', data: plTeor.map(Math.round), backgroundColor: '#60a5fa' },
+        { label: 'P&L Real',    data: plReal.map(Math.round), backgroundColor: '#60a5fa' },
+        { label: 'P&L Teórico', data: plTeor.map(Math.round), backgroundColor: '#94a3b8' },
       ]
     },
     options: {
@@ -1091,8 +1091,8 @@ function renderBarrasCuota(datos) {
     data: {
       labels: rangos.map((r,i) => `${r.label} (${counts[i]})`),
       datasets: [
-        { label: 'P&L Real',    data: plReal.map(Math.round), backgroundColor: '#f59e0b' },
-        { label: 'P&L Teórico', data: plTeor.map(Math.round), backgroundColor: '#60a5fa' },
+        { label: 'P&L Real',    data: plReal.map(Math.round), backgroundColor: '#60a5fa' },
+        { label: 'P&L Teórico', data: plTeor.map(Math.round), backgroundColor: '#94a3b8' },
       ]
     },
     options: {
@@ -1142,7 +1142,7 @@ function renderTablaLiga(datos) {
           <td style="padding:6px 4px;text-align:center;color:var(--muted);">${r.apuestas}</td>
           <td style="padding:6px 4px;text-align:center;color:var(--green);">+${r.olv.toFixed(1).replace('.',',')}%</td>
           <td style="padding:6px 4px;text-align:center;color:${r.plReal >= 0 ? 'var(--green)' : 'var(--red)'};">${r.plReal >= 0 ? '+' : ''}$${Math.round(r.plReal).toLocaleString('es-CL')}</td>
-          <td style="padding:6px 4px;text-align:center;color:var(--blue);">+$${Math.round(r.plTeor).toLocaleString('es-CL')}</td>
+          <td style="padding:6px 4px;text-align:center;color:#94a3b8;">+$${Math.round(r.plTeor).toLocaleString('es-CL')}</td>
         </tr>`).join('')}
     </table>`;
 
@@ -1518,16 +1518,17 @@ function renderKeys(e) {
   panel.style.display = 'block';
 
   // Color y mensaje global
-  const colorGlobal = e.alcanzaTotal ? 'var(--green)' : 'var(--red)';
+  const colorGlobal = e.alcanzaTotal ? '#f8fafc' : '#f87171';
   const msgGlobal   = e.alcanzaTotal
     ? `✅ Cobertura completa — ${e.escaneosTotal} escaneos posibles vs ${e.escaneosTotalesNecesarios} necesarios (${e.diasRest} días)`
     : `🚨 RIESGO DE PERDER EVENTOS — solo ${e.escaneosTotal} escaneos posibles vs ${e.escaneosTotalesNecesarios} necesarios`;
 
   // Tabla por key
   const keysHtml = e.keys.map(k => {
-    const color = k.estado === 'ok'      ? 'var(--green)'
-                : k.estado === 'baja'    ? 'var(--yellow)'
-                : k.estado === 'critica' ? 'var(--red)'
+    const color = k.estado === 'ok'      ? '#f8fafc'
+                : k.estado === 'baja'    ? '#cbd5e1'
+                : k.estado === 'critica' ? '#f87171'
+                : '#dc2626'; // agotada
                 : 'var(--muted)';
 
     const pct = Math.min(100, Math.round(k.remaining / 500 * 100));
