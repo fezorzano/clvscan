@@ -552,7 +552,7 @@
       <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
         <span id="scanIcon">⟳</span> SCAN
       </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v17/05 18:37</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v17/05 18:39</div>
     </div>
   </div>
 
@@ -1007,38 +1007,13 @@ function renderCurvaPL(datos) {
       responsive: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: {
-          display: true,
-          labels: {
-            font: { size: 10 },
-            usePointStyle: true,
-            pointStyle: 'line',
-            color: '#94a3b8',
-            generateLabels(chart) {
-              return chart.data.datasets.map((ds, i) => ({
-                text:        ds.label,
-                strokeStyle: ds.borderColor,
-                fillStyle:   'transparent',
-                color:       ds.borderColor,
-                hidden:      !chart.isDatasetVisible(i),
-                lineWidth:   2,
-                pointStyle:  'line',
-                datasetIndex: i,
-              }));
-            }
-          }
-        },
+        legend: { display: false },
         tooltip: {
           mode: 'index',
           intersect: false,
           callbacks: {
-            label(ctx) {
-              const color = ctx.dataset.borderColor;
-              return `${ctx.dataset.label}: $${ctx.raw.toLocaleString('es-CL')}`;
-            },
-            labelColor(ctx) {
-              return { borderColor: 'transparent', backgroundColor: ctx.dataset.borderColor };
-            }
+            label: ctx => `${ctx.dataset.label}: $${ctx.raw.toLocaleString('es-CL')}`,
+            labelColor: ctx => ({ borderColor: 'transparent', backgroundColor: ctx.dataset.borderColor })
           }
         }
       },
@@ -1048,6 +1023,12 @@ function renderCurvaPL(datos) {
       }
     }
   });
+  // Leyenda HTML manual con colores correctos
+  document.getElementById('chart-pl').insertAdjacentHTML('beforebegin',
+    `<div style="text-align:center;margin-bottom:6px;font-size:10px;">
+      <span style="color:#60a5fa;margin-right:16px;">— P&L Real</span>
+      <span style="color:#94a3b8;">- - P&L Teórico</span>
+    </div>`);
 }
 
 // 2. Barras por rango OLV
