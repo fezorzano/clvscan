@@ -552,7 +552,7 @@
       <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
         <span id="scanIcon">⟳</span> SCAN
       </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v17/05 17:58</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v17/05 18:07</div>
     </div>
   </div>
 
@@ -1003,7 +1003,32 @@ function renderCurvaPL(datos) {
         { label: 'P&L Teórico', data: teorData, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)', tension: 0.3, fill: true, pointRadius: 2, borderDash: [4,4] }
       ]
     },
-    options: { ...chartOpts('$'), plugins: { ...chartOpts('$').plugins, legend: { display: true, labels: { color: '#94a3b8', font: { size: 10 } } } } }
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: true,
+          labels: {
+            color: '#94a3b8',
+            font: { size: 10 },
+            usePointStyle: true,
+            pointStyle: 'line',
+          }
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: $${ctx.raw.toLocaleString('es-CL')}`
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: '#64748b', font: { size: 9 }, callback: v => `$${(v/1000).toFixed(0)}k` }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
   });
 }
 
@@ -1021,17 +1046,28 @@ function renderBarrasOLV(datos) {
   const plTeor  = rangos.map(r => datos.filter(a => parseFloat(a.clv) >= r.min && parseFloat(a.clv) < r.max).reduce((s,a) => s + (parseFloat(a.ev)||0)*a.stake/100, 0));
   const counts  = rangos.map(r => datos.filter(a => parseFloat(a.clv) >= r.min && parseFloat(a.clv) < r.max).length);
 
-  const ctx = document.getElementById('chart-olv').getContext('2d');
-  charts['olv'] = new Chart(ctx, {
+  const ctx2 = document.getElementById('chart-olv').getContext('2d');
+  charts['olv'] = new Chart(ctx2, {
     type: 'bar',
     data: {
       labels: rangos.map((r,i) => `${r.label} (${counts[i]})`),
       datasets: [
-        { label: 'P&L Real',     data: plReal.map(Math.round), backgroundColor: '#4ade80' },
+        { label: 'P&L Real',    data: plReal.map(Math.round), backgroundColor: '#4ade80' },
         { label: 'P&L Teórico', data: plTeor.map(Math.round), backgroundColor: '#60a5fa' },
       ]
     },
-    options: { ...chartOpts('$'), plugins: { ...chartOpts('$').plugins, legend: { display: true, labels: { color: '#94a3b8', font: { size: 10 } } } } }
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, labels: { color: '#94a3b8', font: { size: 10 }, usePointStyle: true, pointStyle: 'rect' } },
+        tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => `${ctx.dataset.label}: $${ctx.raw.toLocaleString('es-CL')}` } }
+      },
+      scales: {
+        x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: '#64748b', font: { size: 9 }, callback: v => `$${(v/1000).toFixed(0)}k` }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
   });
 }
 
@@ -1049,17 +1085,28 @@ function renderBarrasCuota(datos) {
   const plTeor  = rangos.map(r => datos.filter(a => a.coolbet >= r.min && a.coolbet < r.max).reduce((s,a) => s + (parseFloat(a.ev)||0)*a.stake/100, 0));
   const counts  = rangos.map(r => datos.filter(a => a.coolbet >= r.min && a.coolbet < r.max).length);
 
-  const ctx = document.getElementById('chart-cuota').getContext('2d');
-  charts['cuota'] = new Chart(ctx, {
+  const ctx3 = document.getElementById('chart-cuota').getContext('2d');
+  charts['cuota'] = new Chart(ctx3, {
     type: 'bar',
     data: {
       labels: rangos.map((r,i) => `${r.label} (${counts[i]})`),
       datasets: [
-        { label: 'P&L Real',     data: plReal.map(Math.round), backgroundColor: '#f59e0b' },
+        { label: 'P&L Real',    data: plReal.map(Math.round), backgroundColor: '#f59e0b' },
         { label: 'P&L Teórico', data: plTeor.map(Math.round), backgroundColor: '#60a5fa' },
       ]
     },
-    options: { ...chartOpts('$'), plugins: { ...chartOpts('$').plugins, legend: { display: true, labels: { color: '#94a3b8', font: { size: 10 } } } } }
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, labels: { color: '#94a3b8', font: { size: 10 }, usePointStyle: true, pointStyle: 'rect' } },
+        tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => `${ctx.dataset.label}: $${ctx.raw.toLocaleString('es-CL')}` } }
+      },
+      scales: {
+        x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: '#64748b', font: { size: 9 }, callback: v => `$${(v/1000).toFixed(0)}k` }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
   });
 }
 
