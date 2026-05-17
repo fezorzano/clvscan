@@ -552,7 +552,7 @@
       <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
         <span id="scanIcon">⟳</span> SCAN
       </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v17/05 18:25</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v17/05 18:29</div>
     </div>
   </div>
 
@@ -1010,10 +1010,18 @@ function renderCurvaPL(datos) {
         legend: {
           display: true,
           labels: {
-            color: '#94a3b8',
             font: { size: 10 },
             usePointStyle: true,
             pointStyle: 'line',
+            generateLabels: chart => chart.data.datasets.map((ds, i) => ({
+              text: ds.label,
+              strokeStyle: ds.borderColor,
+              fillStyle: ds.borderColor,
+              fontColor: ds.borderColor,
+              lineWidth: 2,
+              datasetIndex: i,
+              pointStyle: 'line',
+            }))
           }
         },
         tooltip: {
@@ -1134,7 +1142,7 @@ function renderTablaLiga(datos) {
         <th style="padding:6px 4px;">#</th>
         <th style="padding:6px 4px;">OLV</th>
         <th style="padding:6px 4px;">P&L Real</th>
-        <th style="padding:6px 4px;">P&L Teór.</th>
+        <th style="padding:6px 4px;">P&L Teórico</th>
       </tr>
       ${rows.map(r => `
         <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
@@ -1178,7 +1186,7 @@ function renderProgresiónOLV(datos) {
     data: {
       labels,
       datasets: [
-        { label: 'OLV Prom acumulado', data: olvData, borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.1)', tension: 0.3, fill: true, pointRadius: 2 },
+        { label: 'OLV Prom acumulado', data: olvData, borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,0.1)', tension: 0.3, fill: true, pointRadius: 2 },
       ]
     },
     options: { ...chartOpts('%'), plugins: { ...chartOpts('%').plugins, legend: { display: false } } }
