@@ -552,7 +552,7 @@
       <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
         <span id="scanIcon">⟳</span> SCAN
       </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v16/05 08:47</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v16/05 17:25</div>
     </div>
   </div>
 
@@ -649,8 +649,8 @@
       </div>
       <div class="pl-card">
         <div class="pl-val" id="pl-volumen" style="color:var(--blue)">$0</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px;" id="pl-volumen-resuelto"></div>
         <div class="stat-label">Total Apostado</div>
+        <div style="font-size:11px;color:var(--blue);margin-top:3px;" id="pl-volumen-resuelto"></div>
       </div>
       <div class="pl-card">
         <div class="pl-val" id="pl-pct-bankroll" style="color:var(--blue)">0.0%</div>
@@ -1174,6 +1174,11 @@ function renderKeys(e) {
     </div>`;
 }
 
+// Formato porcentaje con coma decimal (estilo Chile)
+function fmtPct(n, decimals = 1) {
+  return n.toFixed(decimals).replace('.', ',');
+}
+
 // ==================== CALCULADORA KELLY ====================
 function calcularKelly() {
   const coolbet  = parseFloat(document.getElementById('k-coolbet').value);
@@ -1423,7 +1428,7 @@ function actualizarPLSummary(resumen) {
   // (1,2) Yield = P&L Real / Volumen resuelto
   const yieldReal = volumenResuelto > 0 ? (r.plTotal / volumenResuelto * 100) : 0;
   const yieldEl = document.getElementById('pl-yield');
-  yieldEl.textContent = (yieldReal >= 0 ? '+' : '') + yieldReal.toFixed(1) + '%';
+  yieldEl.textContent = (yieldReal >= 0 ? '+' : '') + fmtPct(yieldReal) + '%';
   yieldEl.className = 'pl-val ' + (yieldReal > 0 ? 'positivo' : yieldReal < 0 ? 'negativo' : 'neutral');
 
   // (2,1) P&L Teórico = Σ(EV% × Stake) solo resueltas
@@ -1438,7 +1443,7 @@ function actualizarPLSummary(resumen) {
   const olvPonderado = volumenResuelto > 0
     ? cerradas.reduce((s, a) => s + (parseFloat(a.clv)||0) * a.stake, 0) / volumenResuelto
     : 0;
-  document.getElementById('pl-clv-prom').textContent = '+' + olvPonderado.toFixed(1) + '%';
+  document.getElementById('pl-clv-prom').textContent = '+' + fmtPct(olvPonderado) + '%';
 
   // (3,1) Saldo Coolbet = inicial + P&L resuelto - stakes pendientes
   const saldoActual = SALDO_INICIAL + r.plTotal - stakePendiente;
@@ -1455,14 +1460,15 @@ function actualizarPLSummary(resumen) {
   // (4,1) Total apostado histórico
   const volEl = document.getElementById('pl-volumen');
   if (volEl) volEl.textContent = '$' + volumenTotal.toLocaleString('es-CL');
+  const faltante = Math.max(0, BANKROLL_REFERENCIA - volumenResuelto);
   const volResEl = document.getElementById('pl-volumen-resuelto');
-  if (volResEl) volResEl.textContent = `resuelto: $${volumenResuelto.toLocaleString('es-CL')}`;
+  if (volResEl) volResEl.textContent = `faltan: $${faltante.toLocaleString('es-CL')}`;
 
   // (4,2) % Meta Bono ($1.200.000)
   const pctBankroll = volumenTotal > 0 ? (volumenTotal / BANKROLL_REFERENCIA * 100) : 0;
   const pctEl = document.getElementById('pl-pct-bankroll');
   if (pctEl) {
-    pctEl.textContent = pctBankroll.toFixed(1) + '%';
+    pctEl.textContent = fmtPct(pctBankroll) + '%';
     pctEl.className = 'pl-val neutral';
     pctEl.style.color = 'var(--blue)';
   }
