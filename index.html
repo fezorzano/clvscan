@@ -552,7 +552,7 @@
       <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
         <span id="scanIcon">⟳</span> SCAN
       </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v17/05 17:41</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v17/05 17:47</div>
     </div>
   </div>
 
@@ -731,11 +731,23 @@
   <!-- TAB: ANALYTICS -->
   <div class="tab-content" id="tab-analytics">
 
-    <!-- Filtro OLV -->
-    <div style="display:flex;gap:8px;margin-bottom:16px;">
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
       <button class="filter-btn active" onclick="setAnalyticsFilter('todos', this)">Todos</button>
       <button class="filter-btn" onclick="setAnalyticsFilter('verde', this)">🟢 >5%</button>
       <button class="filter-btn" onclick="setAnalyticsFilter('amarillo', this)">🟡 3-5%</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+      <button class="filter-btn" onclick="setFechaAtajo(0)" style="font-size:10px;padding:4px 10px;">Hoy</button>
+      <button class="filter-btn" onclick="setFechaAtajo(1)" style="font-size:10px;padding:4px 10px;">Ayer</button>
+      <button class="filter-btn" onclick="setFechaAtajo(7)" style="font-size:10px;padding:4px 10px;">7 días</button>
+      <button class="filter-btn" onclick="setFechaAtajo(30)" style="font-size:10px;padding:4px 10px;">30 días</button>
+      <button class="filter-btn" onclick="limpiarFechas()" style="font-size:10px;padding:4px 10px;">✕ Todo</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;">DESDE</div>
+      <input type="date" id="analytics-desde" style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;" oninput="renderAnalytics()">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;">HASTA</div>
+      <input type="date" id="analytics-hasta" style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;" oninput="renderAnalytics()">
     </div>
 
     <!-- 1. Curva P&L acumulado -->
@@ -876,16 +888,65 @@ const DEMO_OPORTUNIDADES = [
 let oportunidadesActuales = [];
 
 // ==================== TABS ====================
+function setFechaAtajo(dias) {
+  const hoy    = new Date();
+  const hasta  = new Date();
+  const desde  = new Date();
+  const fmt    = d => d.toISOString().split('T')[0];
+
+  if (dias === 0) {
+    // Hoy
+    document.getElementById('analytics-desde').value = fmt(hoy);
+    document.getElementById('analytics-hasta').value = fmt(hoy);
+  } else if (dias === 1) {
+    // Ayer
+    desde.setDate(hoy.getDate() - 1);
+    document.getElementById('analytics-desde').value = fmt(desde);
+    document.getElementById('analytics-hasta').value = fmt(desde);
+  } else {
+    // Últimos N días
+    desde.setDate(hoy.getDate() - dias);
+    document.getElementById('analytics-desde').value = fmt(desde);
+    document.getElementById('analytics-hasta').value = fmt(hasta);
+  }
+  renderAnalytics();
+}
+
+function limpiarFechas() {
+  document.getElementById('analytics-desde').value = '';
+  document.getElementById('analytics-hasta').value = '';
+  renderAnalytics();
+}
+
 function renderAnalytics() {
   if (!apuestas || apuestas.length === 0) {
     cargarTrackerDesdeSheets().then(() => renderAnalytics());
     return;
   }
 
-  // Filtrar según selector
+  // Filtrar por resultado
   let datos = apuestas.filter(a => a.resultado !== 'pendiente');
-  if (analyticsFilter === 'verde')   datos = datos.filter(a => parseFloat(a.clv) >= 5);
+  if (analyticsFilter === 'verde')    datos = datos.filter(a => parseFloat(a.clv) >= 5);
   if (analyticsFilter === 'amarillo') datos = datos.filter(a => parseFloat(a.clv) >= 3 && parseFloat(a.clv) < 5);
+
+  // Filtrar por rango de fechas
+  const desde = document.getElementById('analytics-desde')?.value;
+  const hasta = document.getElementById('analytics-hasta')?.value;
+  if (desde) {
+    const desdeDate = new Date(desde);
+    datos = datos.filter(a => {
+      const f = parsearFechaEvento(a.fechaEvento);
+      return f && f >= desdeDate;
+    });
+  }
+  if (hasta) {
+    const hastaDate = new Date(hasta);
+    hastaDate.setHours(23, 59, 59);
+    datos = datos.filter(a => {
+      const f = parsearFechaEvento(a.fechaEvento);
+      return f && f <= hastaDate;
+    });
+  }
 
   renderCurvaPL(datos);
   renderBarrasOLV(datos);
