@@ -552,7 +552,7 @@
       <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
         <span id="scanIcon">⟳</span> SCAN
       </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v17/05 18:29</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v17/05 18:34</div>
     </div>
   </div>
 
@@ -1017,7 +1017,7 @@ function renderCurvaPL(datos) {
               text: ds.label,
               strokeStyle: ds.borderColor,
               fillStyle: ds.borderColor,
-              fontColor: ds.borderColor,
+              color: ds.borderColor,
               lineWidth: 2,
               datasetIndex: i,
               pointStyle: 'line',
@@ -1028,8 +1028,10 @@ function renderCurvaPL(datos) {
           mode: 'index',
           intersect: false,
           callbacks: {
-            label: ctx => `${ctx.dataset.label}: $${ctx.raw.toLocaleString('es-CL')}`
-          }
+            label: ctx => `${ctx.dataset.label}: $${ctx.raw.toLocaleString('es-CL')}`,
+            labelColor: ctx => ({ borderColor: ctx.dataset.borderColor, backgroundColor: ctx.dataset.borderColor, borderWidth: 0, borderRadius: 0 }),
+          },
+          usePointStyle: true,
         }
       },
       scales: {
