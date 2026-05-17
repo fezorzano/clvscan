@@ -552,7 +552,7 @@
       <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
         <span id="scanIcon">⟳</span> SCAN
       </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v17/05 17:47</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v17/05 17:58</div>
     </div>
   </div>
 
@@ -933,15 +933,16 @@ function renderAnalytics() {
   const desde = document.getElementById('analytics-desde')?.value;
   const hasta = document.getElementById('analytics-hasta')?.value;
   if (desde) {
-    const desdeDate = new Date(desde);
+    const [dy, dm, dd] = desde.split('-').map(Number);
+    const desdeDate = new Date(dy, dm - 1, dd, 0, 0, 0);
     datos = datos.filter(a => {
       const f = parsearFechaEvento(a.fechaEvento);
       return f && f >= desdeDate;
     });
   }
   if (hasta) {
-    const hastaDate = new Date(hasta);
-    hastaDate.setHours(23, 59, 59);
+    const [hy, hm, hd] = hasta.split('-').map(Number);
+    const hastaDate = new Date(hy, hm - 1, hd, 23, 59, 59);
     datos = datos.filter(a => {
       const f = parsearFechaEvento(a.fechaEvento);
       return f && f <= hastaDate;
@@ -984,7 +985,10 @@ function renderCurvaPL(datos) {
     plAcum   += a.pl;
     teorAcum += (parseFloat(a.ev)||0) * a.stake / 100;
     const f = parsearFechaEvento(a.fechaEvento);
-    labels.push(f ? `${f.getDate()}/${f.getMonth()+1}` : '?');
+    const label = f
+      ? `${f.getDate()}/${f.getMonth()+1} ${String(f.getHours()).padStart(2,'0')}:${String(f.getMinutes()).padStart(2,'0')}`
+      : '?';
+    labels.push(label);
     plData.push(Math.round(plAcum));
     teorData.push(Math.round(teorAcum));
   });
@@ -1114,7 +1118,10 @@ function renderProgresiónOLV(datos) {
     sumOLV   += (parseFloat(a.clv)||0) * a.stake;
     sumStake += a.stake;
     const f = parsearFechaEvento(a.fechaEvento);
-    labels.push(f ? `${f.getDate()}/${f.getMonth()+1}` : '?');
+    const label = f
+      ? `${f.getDate()}/${f.getMonth()+1} ${String(f.getHours()).padStart(2,'0')}:${String(f.getMinutes()).padStart(2,'0')}`
+      : '?';
+    labels.push(label);
     olvData.push(sumStake > 0 ? parseFloat((sumOLV / sumStake).toFixed(2)) : 0);
   });
 
