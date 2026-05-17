@@ -552,7 +552,7 @@
       <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
         <span id="scanIcon">⟳</span> SCAN
       </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v16/05 17:25</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v17/05 16:04</div>
     </div>
   </div>
 
@@ -560,6 +560,7 @@
   <div class="nav">
     <div class="nav-tab active" onclick="cambiarTab('oportunidades', this)">📡 Scanner</div>
     <div class="nav-tab" onclick="cambiarTab('tracker', this)">📝 Tracker</div>
+    <div class="nav-tab" onclick="cambiarTab('analytics', this)">📈 Analytics</div>
   </div>
 
   <!-- TAB: OPORTUNIDADES -->
@@ -727,11 +728,72 @@
     </div>
   </div>
 
+  <!-- TAB: ANALYTICS -->
+  <div class="tab-content" id="tab-analytics">
+
+    <!-- Filtro OLV -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <button class="filter-btn active" onclick="setAnalyticsFilter('todos', this)">Todos</button>
+      <button class="filter-btn" onclick="setAnalyticsFilter('verde', this)">🟢 >5%</button>
+      <button class="filter-btn" onclick="setAnalyticsFilter('amarillo', this)">🟡 3-5%</button>
+    </div>
+
+    <!-- 1. Curva P&L acumulado -->
+    <div class="section-title">Curva P&L Acumulado</div>
+    <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <canvas id="chart-pl" height="200"></canvas>
+    </div>
+
+    <!-- 2. P&L por rango de OLV -->
+    <div class="section-title">P&L por Rango OLV</div>
+    <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <canvas id="chart-olv" height="200"></canvas>
+    </div>
+
+    <!-- 3. P&L por rango de cuota -->
+    <div class="section-title">P&L por Rango de Cuota</div>
+    <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <canvas id="chart-cuota" height="200"></canvas>
+    </div>
+
+    <!-- 4. Tabla por liga -->
+    <div class="section-title">Resumen por Liga</div>
+    <div id="tabla-liga" style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;overflow-x:auto;"></div>
+
+    <!-- 5. Progresión OLV promedio -->
+    <div class="section-title">Progresión OLV Promedio</div>
+    <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <canvas id="chart-olv-prog" height="200"></canvas>
+    </div>
+
+  </div>
+
   <!-- TAB: CONFIG -->
 
 </div>
 
-<!-- Toast -->
+<!-- Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// ==================== ANALYTICS ====================
+let analyticsFilter = 'todos';
+let charts = {};
+
+function setAnalyticsFilter(filtro, el) {
+  document.querySelectorAll('#tab-analytics .filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  analyticsFilter = filtro;
+  renderAnalytics();
+}
+
+function cambiarTab(tab, el) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  el.classList.add('active');
+  if (tab === 'tracker')   cargarTrackerDesdeSheets();
+  if (tab === 'analytics') renderAnalytics();
+}
 <div class="toast" id="toast"></div>
 
 <script>
@@ -811,17 +873,219 @@ const DEMO_OPORTUNIDADES = [
 let oportunidadesActuales = [];
 
 // ==================== TABS ====================
-function cambiarTab(tab, el) {
-  console.log('cambiarTab llamado:', tab, el);
-  document.querySelectorAll('.tab-content').forEach(t => {
-    t.classList.remove('active');
-    console.log('removiendo active de:', t.id);
+function renderAnalytics() {
+  if (!apuestas || apuestas.length === 0) {
+    cargarTrackerDesdeSheets().then(() => renderAnalytics());
+    return;
+  }
+
+  // Filtrar según selector
+  let datos = apuestas.filter(a => a.resultado !== 'pendiente');
+  if (analyticsFilter === 'verde')   datos = datos.filter(a => parseFloat(a.clv) >= 5);
+  if (analyticsFilter === 'amarillo') datos = datos.filter(a => parseFloat(a.clv) >= 3 && parseFloat(a.clv) < 5);
+
+  renderCurvaPL(datos);
+  renderBarrasOLV(datos);
+  renderBarrasCuota(datos);
+  renderTablaLiga(datos);
+  renderProgresiónOLV(datos);
+}
+
+function parsearFechaEvento(str) {
+  try {
+    const match = str.match(/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
+    if (!match) return null;
+    const [_, dia, mes, hora, min] = match;
+    return new Date(2026, parseInt(mes) - 1, parseInt(dia), parseInt(hora), parseInt(min));
+  } catch(e) { return null; }
+}
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+// 1. Curva P&L acumulado por fecha de evento
+function renderCurvaPL(datos) {
+  destroyChart('pl');
+  const sorted = [...datos].sort((a, b) => {
+    const fa = parsearFechaEvento(a.fechaEvento);
+    const fb = parsearFechaEvento(b.fechaEvento);
+    return (fa||0) - (fb||0);
   });
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById(`tab-${tab}`).classList.add('active');
-  el.classList.add('active');
-  console.log('tab activo ahora:', tab);
-  if (tab === 'tracker') cargarTrackerDesdeSheets();
+
+  let plAcum = 0, teorAcum = 0;
+  const labels = [], plData = [], teorData = [];
+
+  sorted.forEach(a => {
+    plAcum   += a.pl;
+    teorAcum += (parseFloat(a.ev)||0) * a.stake / 100;
+    const f = parsearFechaEvento(a.fechaEvento);
+    labels.push(f ? `${f.getDate()}/${f.getMonth()+1}` : '?');
+    plData.push(Math.round(plAcum));
+    teorData.push(Math.round(teorAcum));
+  });
+
+  const ctx = document.getElementById('chart-pl').getContext('2d');
+  charts['pl'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'P&L Real', data: plData, borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.1)', tension: 0.3, fill: true, pointRadius: 2 },
+        { label: 'P&L Teórico', data: teorData, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)', tension: 0.3, fill: true, pointRadius: 2, borderDash: [4,4] }
+      ]
+    },
+    options: { ...chartOpts('$'), plugins: { ...chartOpts('$').plugins, legend: { display: true, labels: { color: '#94a3b8', font: { size: 10 } } } } }
+  });
+}
+
+// 2. Barras por rango OLV
+function renderBarrasOLV(datos) {
+  destroyChart('olv');
+  const rangos = [
+    { label: '3-5%',  min: 3,  max: 5  },
+    { label: '5-7%',  min: 5,  max: 7  },
+    { label: '7-10%', min: 7,  max: 10 },
+    { label: '>10%',  min: 10, max: 999 },
+  ];
+
+  const plReal  = rangos.map(r => datos.filter(a => parseFloat(a.clv) >= r.min && parseFloat(a.clv) < r.max).reduce((s,a) => s + a.pl, 0));
+  const plTeor  = rangos.map(r => datos.filter(a => parseFloat(a.clv) >= r.min && parseFloat(a.clv) < r.max).reduce((s,a) => s + (parseFloat(a.ev)||0)*a.stake/100, 0));
+  const counts  = rangos.map(r => datos.filter(a => parseFloat(a.clv) >= r.min && parseFloat(a.clv) < r.max).length);
+
+  const ctx = document.getElementById('chart-olv').getContext('2d');
+  charts['olv'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: rangos.map((r,i) => `${r.label} (${counts[i]})`),
+      datasets: [
+        { label: 'P&L Real',     data: plReal.map(Math.round), backgroundColor: '#4ade80' },
+        { label: 'P&L Teórico', data: plTeor.map(Math.round), backgroundColor: '#60a5fa' },
+      ]
+    },
+    options: { ...chartOpts('$'), plugins: { ...chartOpts('$').plugins, legend: { display: true, labels: { color: '#94a3b8', font: { size: 10 } } } } }
+  });
+}
+
+// 3. Barras por rango de cuota
+function renderBarrasCuota(datos) {
+  destroyChart('cuota');
+  const rangos = [
+    { label: '<3',    min: 0,  max: 3  },
+    { label: '3-6',   min: 3,  max: 6  },
+    { label: '6-10',  min: 6,  max: 10 },
+    { label: '>10',   min: 10, max: 999 },
+  ];
+
+  const plReal  = rangos.map(r => datos.filter(a => a.coolbet >= r.min && a.coolbet < r.max).reduce((s,a) => s + a.pl, 0));
+  const plTeor  = rangos.map(r => datos.filter(a => a.coolbet >= r.min && a.coolbet < r.max).reduce((s,a) => s + (parseFloat(a.ev)||0)*a.stake/100, 0));
+  const counts  = rangos.map(r => datos.filter(a => a.coolbet >= r.min && a.coolbet < r.max).length);
+
+  const ctx = document.getElementById('chart-cuota').getContext('2d');
+  charts['cuota'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: rangos.map((r,i) => `${r.label} (${counts[i]})`),
+      datasets: [
+        { label: 'P&L Real',     data: plReal.map(Math.round), backgroundColor: '#f59e0b' },
+        { label: 'P&L Teórico', data: plTeor.map(Math.round), backgroundColor: '#60a5fa' },
+      ]
+    },
+    options: { ...chartOpts('$'), plugins: { ...chartOpts('$').plugins, legend: { display: true, labels: { color: '#94a3b8', font: { size: 10 } } } } }
+  });
+}
+
+// 4. Tabla por liga
+function renderTablaLiga(datos) {
+  const ligas = {};
+  datos.forEach(a => {
+    const liga = a.deporte || 'Otros';
+    if (!ligas[liga]) ligas[liga] = { apuestas: 0, volumen: 0, plReal: 0, plTeor: 0, olvSum: 0 };
+    ligas[liga].apuestas++;
+    ligas[liga].volumen += a.stake;
+    ligas[liga].plReal  += a.pl;
+    ligas[liga].plTeor  += (parseFloat(a.ev)||0) * a.stake / 100;
+    ligas[liga].olvSum  += (parseFloat(a.clv)||0) * a.stake;
+  });
+
+  const rows = Object.entries(ligas)
+    .map(([liga, d]) => ({ liga, ...d, olv: d.volumen > 0 ? d.olvSum / d.volumen : 0 }))
+    .sort((a, b) => b.plReal - a.plReal);
+
+  const html = `
+    <table style="width:100%;font-size:11px;border-collapse:collapse;">
+      <tr style="color:var(--muted);border-bottom:1px solid var(--border);">
+        <th style="text-align:left;padding:6px 4px;">Liga</th>
+        <th style="padding:6px 4px;">#</th>
+        <th style="padding:6px 4px;">OLV</th>
+        <th style="padding:6px 4px;">P&L Real</th>
+        <th style="padding:6px 4px;">P&L Teór.</th>
+      </tr>
+      ${rows.map(r => `
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:6px 4px;color:var(--text2);font-size:10px;">${r.liga.replace(/⚽|🎾|🏀/g,'').trim()}</td>
+          <td style="padding:6px 4px;text-align:center;color:var(--muted);">${r.apuestas}</td>
+          <td style="padding:6px 4px;text-align:center;color:var(--green);">+${r.olv.toFixed(1).replace('.',',')}%</td>
+          <td style="padding:6px 4px;text-align:center;color:${r.plReal >= 0 ? 'var(--green)' : 'var(--red)'};">${r.plReal >= 0 ? '+' : ''}$${Math.round(r.plReal).toLocaleString('es-CL')}</td>
+          <td style="padding:6px 4px;text-align:center;color:var(--blue);">+$${Math.round(r.plTeor).toLocaleString('es-CL')}</td>
+        </tr>`).join('')}
+    </table>`;
+
+  document.getElementById('tabla-liga').innerHTML = html;
+}
+
+// 5. Progresión OLV promedio ponderado
+function renderProgresiónOLV(datos) {
+  destroyChart('olv-prog');
+  const sorted = [...datos].sort((a, b) => {
+    const fa = parsearFechaEvento(a.fechaEvento);
+    const fb = parsearFechaEvento(b.fechaEvento);
+    return (fa||0) - (fb||0);
+  });
+
+  let sumOLV = 0, sumStake = 0;
+  const labels = [], olvData = [];
+
+  sorted.forEach((a, i) => {
+    sumOLV   += (parseFloat(a.clv)||0) * a.stake;
+    sumStake += a.stake;
+    const f = parsearFechaEvento(a.fechaEvento);
+    labels.push(f ? `${f.getDate()}/${f.getMonth()+1}` : '?');
+    olvData.push(sumStake > 0 ? parseFloat((sumOLV / sumStake).toFixed(2)) : 0);
+  });
+
+  const ctx = document.getElementById('chart-olv-prog').getContext('2d');
+  charts['olv-prog'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'OLV Prom acumulado', data: olvData, borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.1)', tension: 0.3, fill: true, pointRadius: 2 },
+      ]
+    },
+    options: { ...chartOpts('%'), plugins: { ...chartOpts('%').plugins, legend: { display: false } } }
+  });
+}
+
+// Opciones base para charts
+function chartOpts(unit) {
+  return {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => unit === '$'
+            ? `$${ctx.raw.toLocaleString('es-CL')}`
+            : `${String(ctx.raw).replace('.',',')}%`
+        }
+      }
+    },
+    scales: {
+      x: { ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+      y: { ticks: { color: '#64748b', font: { size: 9 }, callback: v => unit === '$' ? `$${(v/1000).toFixed(0)}k` : `${v}%` }, grid: { color: 'rgba(255,255,255,0.05)' } }
+    }
+  };
 }
 
 // ==================== SCANNER ====================
@@ -888,8 +1152,9 @@ async function simularEscaneo() {
       actualizarStats(nuevas);
       renderAumentarStake(aumentar);
       const msgOmitidas = omitidas > 0 ? ` · ${omitidas} ya apostada(s)` : '';
+      const tsEscaneo   = resp.tsEscaneo ? `Escaneo: ${resp.tsEscaneo}` : `Actualizado: ${new Date().toLocaleTimeString('es-CL', {hour:'2-digit',minute:'2-digit'})}`;
       document.getElementById('updateTime').textContent =
-        `Actualizado: ${new Date().toLocaleTimeString('es-CL', {hour:'2-digit',minute:'2-digit'})} · ${oportunidadesActuales.length} mercados con valor${msgOmitidas}`;
+        `${tsEscaneo} · ${oportunidadesActuales.length} mercados con valor${msgOmitidas}`;
       mostrarToast(`✅ ${oportunidadesActuales.length} oportunidades cargadas${omitidas > 0 ? ` (${omitidas} omitidas)` : ''}`);
     } else if (resp?.ok && resp.oportunidades?.length === 0) {
       oportunidadesActuales = [];
