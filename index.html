@@ -552,7 +552,7 @@
       <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
         <span id="scanIcon">⟳</span> SCAN
       </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v17/05 18:39</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v23/05 08:57</div>
     </div>
   </div>
 
@@ -1247,10 +1247,10 @@ async function simularEscaneo() {
         if (pendientes.length === 0) return { ...o, tipo: 'nueva' };
 
         const stakeTotalPendiente = pendientes.reduce((s, a) => s + a.stake, 0);
-        const clvOriginal = parseFloat(pendientes[0].clv); // CLV de la primera apuesta
-        const clvActual   = parseFloat(o.clv);
+        const clvOriginal = parseFloat(pendientes[0].clv); // porcentaje: 4.6 (convertido al leer)
+        const clvActual   = parseFloat(o.clv);             // porcentaje: 6.6
 
-        if (clvActual - clvOriginal > 2) {
+        if (clvActual - clvOriginal > 2) { // >2 puntos porcentuales
           const stakeExtra = Math.max(0, o.stake - stakeTotalPendiente);
           if (stakeExtra === 0) return null; // ya apostado suficiente → omitir
           return { ...o, tipo: 'aumentar', clvOriginal, stakeExtra, stakeTotalPendiente };
@@ -1513,45 +1513,52 @@ function renderKeys(e) {
   const panel     = document.getElementById('keys-panel');
   const container = document.getElementById('keys-container');
   if (!panel || !container) return;
-
   panel.style.display = 'block';
 
-  // Color y mensaje global
   const colorGlobal = e.alcanzaTotal ? '#f8fafc' : '#f87171';
   const msgGlobal   = e.alcanzaTotal
     ? `✅ Cobertura completa — ${e.escaneosTotal} escaneos posibles vs ${e.escaneosTotalesNecesarios} necesarios (${e.diasRest} días)`
-    : `🚨 RIESGO DE PERDER EVENTOS — solo ${e.escaneosTotal} escaneos posibles vs ${e.escaneosTotalesNecesarios} necesarios`;
+    : `🚨 RIESGO — solo ${e.escaneosTotal} escaneos posibles vs ${e.escaneosTotalesNecesarios} necesarios`;
 
-  // Tabla por key
+  // Proyección del sistema por fecha crítica
+  const proyHtml = (e.proyeccion || []).map(p => {
+    const color = p.ok ? '#f8fafc' : '#f87171';
+    const icono = p.ok ? '✅' : '⚠️';
+    return `
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+        <div style="font-family:var(--font-mono);font-size:10px;color:${color};">${icono} ${p.label}</div>
+        <div style="font-size:10px;color:${color};font-family:var(--font-mono);">${p.keysActivas} keys activas · ${p.escaneosPos} escaneos posibles</div>
+      </div>`;
+  }).join('');
+
+  // Detalle compacto por key (solo barra + requests + reset)
   const keysHtml = e.keys.map(k => {
     const color = k.estado === 'ok'      ? '#f8fafc'
                 : k.estado === 'baja'    ? '#cbd5e1'
+                : k.estado === 'riesgo'  ? '#f87171'
                 : k.estado === 'critica' ? '#f87171'
-                : '#dc2626'; // agotada
-
-    const pct = Math.min(100, Math.round(k.remaining / 500 * 100));
+                : '#dc2626';
+    const pct       = Math.min(100, Math.round(k.remaining / 500 * 100));
+    const resetInfo = k.resetStr ? ` · reset ${k.resetStr.slice(5).replace('-','/')}` : '';
     return `
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;">
-        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);width:24px;">K${k.idx}</div>
-        <div style="flex:1;">
-          <div style="height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-bottom:2px;">
-            <div style="width:${pct}%;height:100%;background:${color};border-radius:3px;"></div>
-          </div>
-          <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">
-            ${k.agotada ? 'AGOTADA' : `${k.remaining} req · ${k.escaneosKey} escaneos posibles`}
-          </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);width:20px;">K${k.idx}</div>
+        <div style="flex:1;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;">
+          <div style="width:${pct}%;height:100%;background:${color};border-radius:2px;"></div>
+        </div>
+        <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);white-space:nowrap;">
+          ${k.agotada ? 'AGOTADA' : k.remaining + ' req'}${resetInfo}
         </div>
       </div>`;
   }).join('');
 
   container.innerHTML = `
     <div style="background:var(--surface);border:1px solid ${colorGlobal}44;border-radius:10px;padding:12px;">
-      <div style="font-size:11px;color:${colorGlobal};font-family:var(--font-mono);margin-bottom:12px;">
-        ${msgGlobal}
-      </div>
-      ${keysHtml}
-      <div style="font-size:9px;color:var(--muted);margin-top:8px;font-family:var(--font-mono);border-top:1px solid var(--border);padding-top:8px;">
-        Keys activas: ${e.keysActivas}/${e.totalKeys} · Umbral mínimo por escaneo: ${e.REQ_POR_ESCANEO} req · Reset: ${e.diasRest} días · Escaneos: 07:00, 13:00 y 19:00
+      <div style="font-size:11px;color:${colorGlobal};font-family:var(--font-mono);margin-bottom:10px;">${msgGlobal}</div>
+      <div style="margin-bottom:12px;">${proyHtml}</div>
+      <div style="border-top:1px solid var(--border);padding-top:10px;">${keysHtml}</div>
+      <div style="font-size:9px;color:var(--muted);margin-top:8px;font-family:var(--font-mono);">
+        Keys activas: ${e.keysActivas}/${e.totalKeys} · Umbral: ${e.REQ_POR_ESCANEO} req/escaneo · Escaneos: 07:00, 13:00 y 19:00
       </div>
     </div>`;
 }
