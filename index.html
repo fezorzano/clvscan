@@ -552,7 +552,7 @@
       <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
         <span id="scanIcon">⟳</span> SCAN
       </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v23/05 08:57</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v23/05 09:49</div>
     </div>
   </div>
 
@@ -1539,7 +1539,11 @@ function renderKeys(e) {
                 : k.estado === 'critica' ? '#f87171'
                 : '#dc2626';
     const pct       = Math.min(100, Math.round(k.remaining / 500 * 100));
-    const resetInfo = k.resetStr ? ` · reset ${k.resetStr.slice(5).replace('-','/')}` : '';
+    const meses     = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    const resetDate = k.resetStr ? new Date(k.resetStr) : null;
+    const resetInfo = resetDate
+      ? ` · reset ${String(resetDate.getDate()).padStart(2,'0')}-${meses[resetDate.getMonth()]}`
+      : '';
     return `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
         <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);width:20px;">K${k.idx}</div>
@@ -1558,7 +1562,7 @@ function renderKeys(e) {
       <div style="margin-bottom:12px;">${proyHtml}</div>
       <div style="border-top:1px solid var(--border);padding-top:10px;">${keysHtml}</div>
       <div style="font-size:9px;color:var(--muted);margin-top:8px;font-family:var(--font-mono);">
-        Keys activas: ${e.keysActivas}/${e.totalKeys} · Umbral: ${e.REQ_POR_ESCANEO} req/escaneo · Escaneos: 07:00, 13:00 y 19:00
+        Keys activas: ${e.keysActivas}/${e.totalKeys} · Umbral: ${e.REQ_POR_ESCANEO} req/escaneo (h2h+totals) · Escaneos: 07:00, 13:00 y 19:00
       </div>
     </div>`;
 }
