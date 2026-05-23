@@ -549,10 +549,15 @@
       <div class="logo-text">CLV<span>SCAN</span></div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-      <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
-        <span id="scanIcon">⟳</span> SCAN
-      </button>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v23/05 11:03</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
+          <span id="scanIcon">⟳</span> SCAN
+        </button>
+        <button class="scan-btn" id="scanRealBtn" onclick="dispararEscaneoReal()" style="background:rgba(96,165,250,0.1);border-color:rgba(96,165,250,0.3);font-size:10px;padding:6px 10px;" title="Genera un nuevo escaneo real (2-3 min)">
+          <span id="scanRealIcon">📡</span> NUEVO
+        </button>
+      </div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v23/05 11:27</div>
     </div>
   </div>
 
@@ -1203,6 +1208,30 @@ function chartOpts(unit) {
       y: { ticks: { color: '#64748b', font: { size: 9 }, callback: v => unit === '$' ? `$${(v/1000).toFixed(0)}k` : `${v}%` }, grid: { color: 'rgba(255,255,255,0.05)' } }
     }
   };
+}
+
+// ==================== ESCANEO REAL ====================
+async function dispararEscaneoReal() {
+  const btn  = document.getElementById('scanRealBtn');
+  const icon = document.getElementById('scanRealIcon');
+  btn.disabled = true;
+  icon.textContent = '⏳';
+  mostrarToast('📡 Iniciando escaneo real...');
+
+  try {
+    const res  = await fetch(`${WEB_APP_URL}?accion=dispararEscaneo`, { redirect: "follow" });
+    const data = await res.json();
+    if (data.ok) {
+      mostrarToast('✓ Escaneo iniciado — recibirás un mail con los resultados');
+    } else {
+      mostrarToast('⚠ Error al iniciar escaneo');
+    }
+  } catch(e) {
+    mostrarToast('⚠ Error de conexión');
+  } finally {
+    btn.disabled = false;
+    icon.textContent = '📡';
+  }
 }
 
 // ==================== SCANNER ====================
