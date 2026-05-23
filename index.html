@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v23/05 11:27</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v23/05 19:14</div>
     </div>
   </div>
 
@@ -1212,6 +1212,9 @@ function chartOpts(unit) {
 
 // ==================== ESCANEO REAL ====================
 async function dispararEscaneoReal() {
+  const confirmado = confirm("¿Iniciar un nuevo escaneo real?\n\nEsto consumirá ~50 requests de API y tardará ~2 minutos. Recibirás un mail con los resultados.");
+  if (!confirmado) return;
+
   const btn  = document.getElementById('scanRealBtn');
   const icon = document.getElementById('scanRealIcon');
   btn.disabled = true;
