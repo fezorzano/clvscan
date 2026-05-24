@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v24/05 15:23</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v24/05 15:27</div>
     </div>
   </div>
 
@@ -717,7 +717,7 @@
         <div class="stat-label">Saldo Coolbet</div>
       </div>
       <div class="pl-card">
-        <div class="pl-val" id="pl-pendiente-stake" style="color:var(--yellow)">$0</div>
+        <div class="pl-val" id="pl-pendiente-stake" style="color:#f59e0b">$0</div>
         <div class="stat-label">En Juego</div>
       </div>
     </div>
@@ -2110,24 +2110,21 @@ function actualizarPLSummary(resumen) {
   const plEl = document.getElementById('pl-total');
   if (plEl) {
     plEl.textContent = (plReal >= 0 ? '+$' : '-$') + Math.abs(Math.round(plReal)).toLocaleString('es-CL');
-    plEl.className = 'pl-val ' + (plReal > 0 ? 'positivo' : plReal < 0 ? 'negativo' : 'neutral');
-    plEl.style.color = plReal >= 0 ? 'var(--blue)' : 'var(--red)';
+    plEl.style.color = plReal > 0 ? '#4ade80' : plReal < 0 ? '#f87171' : 'var(--blue)';
   }
 
   // Yield Real
   const yieldEl = document.getElementById('pl-yield');
   if (yieldEl) {
     yieldEl.textContent = (yieldReal >= 0 ? '+' : '') + fmtPct(yieldReal) + '%';
-    yieldEl.className = 'pl-val ' + (yieldReal > 0 ? 'positivo' : yieldReal < 0 ? 'negativo' : 'neutral');
-    yieldEl.style.color = yieldReal >= 0 ? 'var(--blue)' : 'var(--red)';
+    yieldEl.style.color = yieldReal > 0 ? '#4ade80' : yieldReal < 0 ? '#f87171' : 'var(--blue)';
   }
 
   // Rentabilidad Real
   const rentabRealEl = document.getElementById('pl-rentab-real');
   if (rentabRealEl) {
     rentabRealEl.textContent = (rentabReal >= 0 ? '+' : '') + fmtPct(rentabReal) + '%';
-    rentabRealEl.className = 'pl-val ' + (rentabReal > 0 ? 'positivo' : rentabReal < 0 ? 'negativo' : 'neutral');
-    rentabRealEl.style.color = rentabReal >= 0 ? 'var(--blue)' : 'var(--red)';
+    rentabRealEl.style.color = rentabReal > 0 ? '#4ade80' : rentabReal < 0 ? '#f87171' : 'var(--blue)';
   }
 
   // P&L Teórico
