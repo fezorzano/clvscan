@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v24/05 15:19</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v24/05 15:23</div>
     </div>
   </div>
 
@@ -1092,16 +1092,15 @@ function renderWaterfall(datosFiltrados) {
         borderSkipped: false,
         datalabels: {
           display: true,
-          anchor: ctx => {
-            const [base, top] = ctx.dataset.data[ctx.dataIndex];
-            return top >= base ? 'end' : 'start';
+          anchor: 'end',
+          align: 'end',
+          offset: 4,
+          clamp: true,
+          color: ctx => {
+            const colors = ['#60a5fa', plPeriodo >= 0 ? '#4ade80' : '#f87171', '#f59e0b', '#60a5fa'];
+            return colors[ctx.dataIndex];
           },
-          align: ctx => {
-            const [base, top] = ctx.dataset.data[ctx.dataIndex];
-            return top >= base ? 'top' : 'bottom';
-          },
-          color: '#f8fafc',
-          font: { size: 9, family: 'monospace' },
+          font: { size: 9, family: 'monospace', weight: 'bold' },
           formatter: (val) => {
             const diff = val[1] - val[0];
             const abs = Math.abs(Math.round(diff));
@@ -1113,6 +1112,7 @@ function renderWaterfall(datosFiltrados) {
     },
     options: {
       responsive: true,
+      layout: { padding: { top: 20 } },
       plugins: {
         legend: { display: false },
         tooltip: {
