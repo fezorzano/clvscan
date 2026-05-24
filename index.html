@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v24/05 07:59</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v24/05 15:05</div>
     </div>
   </div>
 
@@ -699,6 +699,16 @@
   <!-- TAB: ANALYTICS -->
   <div class="tab-content active" id="tab-analytics">
 
+    <!-- Filtro de fecha -->
+    <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">
+      <button class="filter-btn active" id="btn-fecha-todo" onclick="setFechaAtajo(-1, this)">Todo</button>
+      <button class="filter-btn" id="btn-fecha-hoy" onclick="setFechaAtajo(0, this)">Hoy</button>
+      <button class="filter-btn" id="btn-fecha-ayer" onclick="setFechaAtajo(1, this)">Ayer</button>
+      <button class="filter-btn" id="btn-fecha-7" onclick="setFechaAtajo(7, this)">7 días</button>
+      <button class="filter-btn" id="btn-fecha-30" onclick="setFechaAtajo(30, this)">30 días</button>
+      <div id="analytics-periodo" style="margin-left:auto;font-size:10px;color:var(--muted);font-family:var(--font-mono);align-self:center;"></div>
+    </div>
+
     <!-- P&L Summary -->
     <!-- Fila 1: independientes del filtro -->
     <div class="pl-summary" style="grid-template-columns:1fr 1fr;margin-bottom:10px;">
@@ -717,6 +727,7 @@
       <div class="pl-card">
         <div class="pl-val" id="pl-volumen" style="color:var(--blue)">$0</div>
         <div class="stat-label">Total Apostado</div>
+        <div style="font-size:10px;color:var(--blue);margin-top:2px;" id="pl-volumen-resuelto"></div>
       </div>
       <div class="pl-card">
         <div class="pl-val" id="pl-pct-bankroll" style="color:var(--blue)">0,0%</div>
@@ -726,56 +737,41 @@
 
     <!-- Fila 3: real — filtrada -->
     <div class="pl-summary" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:10px;">
-      <div class="pl-card">
-        <div class="pl-val" id="pl-total" style="color:var(--blue)">$0</div>
+      <div class="pl-card" style="min-width:0;overflow:hidden;">
+        <div class="pl-val" id="pl-total" style="color:var(--blue);font-size:clamp(13px,4vw,20px);">$0</div>
         <div class="stat-label">P&L Real</div>
       </div>
-      <div class="pl-card">
-        <div class="pl-val" id="pl-yield" style="color:var(--blue)">0,0%</div>
-        <div class="stat-label">Yield Real</div>
+      <div class="pl-card" style="min-width:0;overflow:hidden;">
+        <div class="pl-val" id="pl-yield" style="color:var(--blue);font-size:clamp(13px,4vw,20px);">0,0%</div>
+        <div class="stat-label">Yield</div>
       </div>
-      <div class="pl-card">
-        <div class="pl-val" id="pl-rentab-real" style="color:var(--blue)">0,0%</div>
+      <div class="pl-card" style="min-width:0;overflow:hidden;">
+        <div class="pl-val" id="pl-rentab-real" style="color:var(--blue);font-size:clamp(13px,4vw,20px);">0,0%</div>
         <div class="stat-label">Rentab. Real</div>
       </div>
     </div>
 
     <!-- Fila 4: teórico — filtrada -->
     <div class="pl-summary" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:16px;">
-      <div class="pl-card">
-        <div class="pl-val" id="pl-teorico" style="color:#94a3b8">+$0</div>
+      <div class="pl-card" style="min-width:0;overflow:hidden;">
+        <div class="pl-val" id="pl-teorico" style="color:#94a3b8;font-size:clamp(13px,4vw,20px);">+$0</div>
         <div class="stat-label">P&L Teórico</div>
       </div>
-      <div class="pl-card">
-        <div class="pl-val" id="pl-clv-prom" style="color:#94a3b8">0,0%</div>
-        <div class="stat-label">OLV Promedio</div>
+      <div class="pl-card" style="min-width:0;overflow:hidden;">
+        <div class="pl-val" id="pl-clv-prom" style="color:#94a3b8;font-size:clamp(13px,4vw,20px);">0,0%</div>
+        <div class="stat-label">OLV</div>
       </div>
-      <div class="pl-card">
-        <div class="pl-val" id="pl-rentab-teorica" style="color:#94a3b8">0,0%</div>
-        <div class="stat-label">Rentab. Teórica</div>
+      <div class="pl-card" style="min-width:0;overflow:hidden;">
+        <div class="pl-val" id="pl-rentab-teorica" style="color:#94a3b8;font-size:clamp(13px,4vw,20px);">0,0%</div>
+        <div class="stat-label">Rentab. Teór.</div>
       </div>
     </div>
 
 
 
-    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-      <button class="filter-btn active" onclick="setAnalyticsFilter('todos', this)">Todos</button>
-      <button class="filter-btn" onclick="setAnalyticsFilter('verde', this)">🟢 >5%</button>
-      <button class="filter-btn" onclick="setAnalyticsFilter('amarillo', this)">🟡 3-5%</button>
-    </div>
-    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
-      <button class="filter-btn" onclick="setFechaAtajo(0)" style="font-size:10px;padding:4px 10px;">Hoy</button>
-      <button class="filter-btn" onclick="setFechaAtajo(1)" style="font-size:10px;padding:4px 10px;">Ayer</button>
-      <button class="filter-btn" onclick="setFechaAtajo(7)" style="font-size:10px;padding:4px 10px;">7 días</button>
-      <button class="filter-btn" onclick="setFechaAtajo(30)" style="font-size:10px;padding:4px 10px;">30 días</button>
-      <button class="filter-btn" onclick="limpiarFechas()" style="font-size:10px;padding:4px 10px;">✕ Todo</button>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
-      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;">DESDE</div>
-      <input type="date" id="analytics-desde" style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;" oninput="renderAnalytics()">
-      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;">HASTA</div>
-      <input type="date" id="analytics-hasta" style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;" oninput="renderAnalytics()">
-    </div>
+    <!-- inputs ocultos para compatibilidad con lógica de filtros -->
+    <input type="date" id="analytics-desde" style="display:none;">
+    <input type="date" id="analytics-hasta" style="display:none;">
 
     <!-- 1. Curva P&L acumulado -->
     <div class="section-title">Curva P&L Acumulado</div>
@@ -930,34 +926,41 @@ function parsearFechaEventoChile(str) {
   } catch(e) { return null; }
 }
 
-function setFechaAtajo(dias) {
-  const hoy    = new Date();
-  const hasta  = new Date();
-  const desde  = new Date();
-  const fmt    = d => d.toISOString().split('T')[0];
+function setFechaAtajo(dias, el) {
+  // Marcar botón activo
+  document.querySelectorAll('#tab-analytics .filter-btn').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
 
-  if (dias === 0) {
-    // Hoy
-    document.getElementById('analytics-desde').value = fmt(hoy);
-    document.getElementById('analytics-hasta').value = fmt(hoy);
+  const hoy   = new Date();
+  const fmt   = d => d.toISOString().split('T')[0];
+  const desde = document.getElementById('analytics-desde');
+  const hasta  = document.getElementById('analytics-hasta');
+
+  if (dias === -1) {
+    // Todo — sin filtro
+    desde.value = '';
+    hasta.value  = '';
+    document.getElementById('analytics-periodo').textContent = '';
+  } else if (dias === 0) {
+    desde.value = fmt(hoy);
+    hasta.value  = fmt(hoy);
+    document.getElementById('analytics-periodo').textContent = fmt(hoy).slice(5).replace('-','/');
   } else if (dias === 1) {
-    // Ayer
-    desde.setDate(hoy.getDate() - 1);
-    document.getElementById('analytics-desde').value = fmt(desde);
-    document.getElementById('analytics-hasta').value = fmt(desde);
+    const ayer = new Date(hoy); ayer.setDate(hoy.getDate() - 1);
+    desde.value = fmt(ayer);
+    hasta.value  = fmt(ayer);
+    document.getElementById('analytics-periodo').textContent = fmt(ayer).slice(5).replace('-','/');
   } else {
-    // Últimos N días
-    desde.setDate(hoy.getDate() - dias);
-    document.getElementById('analytics-desde').value = fmt(desde);
-    document.getElementById('analytics-hasta').value = fmt(hasta);
+    const d = new Date(hoy); d.setDate(hoy.getDate() - dias);
+    desde.value = fmt(d);
+    hasta.value  = fmt(hoy);
+    document.getElementById('analytics-periodo').textContent = `${fmt(d).slice(5).replace('-','/')} → ${fmt(hoy).slice(5).replace('-','/')}`;
   }
   renderAnalytics();
 }
 
 function limpiarFechas() {
-  document.getElementById('analytics-desde').value = '';
-  document.getElementById('analytics-hasta').value = '';
-  renderAnalytics();
+  setFechaAtajo(-1, document.getElementById('btn-fecha-todo'));
 }
 
 function renderAnalytics() {
@@ -1900,6 +1903,9 @@ function actualizarPLSummary(resumen) {
   // Total Apostado
   const volEl = document.getElementById('pl-volumen');
   if (volEl) volEl.textContent = '$' + volumenTotal.toLocaleString('es-CL');
+  const faltante = Math.max(0, BANKROLL_REFERENCIA - todasCerradas.reduce((s,a) => s+a.stake, 0));
+  const volResEl = document.getElementById('pl-volumen-resuelto');
+  if (volResEl) volResEl.textContent = faltante > 0 ? `faltan: $${faltante.toLocaleString('es-CL')}` : '✓ Meta cumplida';
 
   // % Meta Bono
   const pctBankroll = volumenTotal > 0 ? (volumenTotal / BANKROLL_REFERENCIA * 100) : 0;
