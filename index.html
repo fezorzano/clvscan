@@ -557,19 +557,19 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v23/05 19:14</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v24/05 07:59</div>
     </div>
   </div>
 
   <!-- Nav -->
   <div class="nav">
-    <div class="nav-tab active" onclick="cambiarTab('oportunidades', this)">📡 Scanner</div>
+    <div class="nav-tab active" onclick="cambiarTab('analytics', this)">📈 Analytics</div>
+    <div class="nav-tab" onclick="cambiarTab('oportunidades', this)">📡 Scanner</div>
     <div class="nav-tab" onclick="cambiarTab('tracker', this)">📝 Tracker</div>
-    <div class="nav-tab" onclick="cambiarTab('analytics', this)">📈 Analytics</div>
   </div>
 
   <!-- TAB: OPORTUNIDADES -->
-  <div class="tab-content active" id="tab-oportunidades">
+  <div class="tab-content" id="tab-oportunidades">
 
     <!-- Stats -->
     <div class="stats-bar">
@@ -627,41 +627,32 @@
   <!-- TAB: TRACKER -->
   <div class="tab-content" id="tab-tracker">
 
-    <!-- P&L Summary -->
-    <div class="pl-summary">
-      <div class="pl-card">
-        <div class="pl-val" id="pl-total" style="color:var(--blue)">$0</div>
-        <div class="stat-label">P&L Real</div>
+    <!-- Formulario nueva apuesta -->
+    <div class="section-title">Nueva Apuesta</div>
+    <div class="tracker-form">
+      <div class="form-group">
+        <label class="form-label">Evento</label>
+        <input class="form-input" id="f-evento" type="text" placeholder="Ej: Real Madrid vs Barcelona">
       </div>
-      <div class="pl-card">
-        <div class="pl-val" id="pl-yield" style="color:var(--blue)">0.0%</div>
-        <div class="stat-label">Yield</div>
+      <div class="form-group">
+        <label class="form-label">Selección</label>
+        <input class="form-input" id="f-seleccion" type="text" placeholder="Ej: Real Madrid">
       </div>
-      <div class="pl-card">
-        <div class="pl-val" id="pl-teorico" style="color:#94a3b8">+$0</div>
-        <div class="stat-label">P&L Teórico</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Cuota Coolbet</label>
+          <input class="form-input" id="f-cuota-coolbet" type="number" step="0.01" placeholder="2.10">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cuota Pinnacle</label>
+          <input class="form-input" id="f-cuota-pinnacle" type="number" step="0.01" placeholder="1.95">
+        </div>
       </div>
-      <div class="pl-card">
-        <div class="pl-val" id="pl-clv-prom" style="color:#94a3b8">0.0%</div>
-        <div class="stat-label">OLV Prom</div>
+      <div class="form-group">
+        <label class="form-label">Stake (CLP)</label>
+        <input class="form-input" id="f-stake" type="number" step="1000" placeholder="15000">
       </div>
-      <div class="pl-card">
-        <div class="pl-val" id="pl-saldo" style="color:var(--blue)">$400.000</div>
-        <div class="stat-label">Saldo Coolbet</div>
-      </div>
-      <div class="pl-card">
-        <div class="pl-val" id="pl-pendiente-stake" style="color:var(--yellow)">$0</div>
-        <div class="stat-label">En Juego</div>
-      </div>
-      <div class="pl-card">
-        <div class="pl-val" id="pl-volumen" style="color:var(--blue)">$0</div>
-        <div class="stat-label">Total Apostado</div>
-        <div style="font-size:11px;color:var(--blue);margin-top:3px;" id="pl-volumen-resuelto"></div>
-      </div>
-      <div class="pl-card">
-        <div class="pl-val" id="pl-pct-bankroll" style="color:var(--blue)">0.0%</div>
-        <div class="stat-label">% Meta Bono</div>
-      </div>
+      <button class="submit-btn" onclick="registrarApuesta()">+ REGISTRAR APUESTA</button>
     </div>
 
     <!-- Calculadora Kelly -->
@@ -696,34 +687,6 @@
       </div>
     </div>
 
-    <!-- Formulario nueva apuesta -->
-    <div class="section-title">Nueva Apuesta</div>
-    <div class="tracker-form">
-      <div class="form-group">
-        <label class="form-label">Evento</label>
-        <input class="form-input" id="f-evento" type="text" placeholder="Ej: Real Madrid vs Barcelona">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Selección</label>
-        <input class="form-input" id="f-seleccion" type="text" placeholder="Ej: Real Madrid">
-      </div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label class="form-label">Cuota Coolbet</label>
-          <input class="form-input" id="f-cuota-coolbet" type="number" step="0.01" placeholder="2.10">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Cuota Pinnacle</label>
-          <input class="form-input" id="f-cuota-pinnacle" type="number" step="0.01" placeholder="1.95">
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Stake (CLP)</label>
-        <input class="form-input" id="f-stake" type="number" step="1000" placeholder="15000">
-      </div>
-      <button class="submit-btn" onclick="registrarApuesta()">+ REGISTRAR APUESTA</button>
-    </div>
-
     <!-- Lista de apuestas -->
     <div class="section-title">Historial</div>
     <div id="historial-container">
@@ -734,7 +697,66 @@
   </div>
 
   <!-- TAB: ANALYTICS -->
-  <div class="tab-content" id="tab-analytics">
+  <div class="tab-content active" id="tab-analytics">
+
+    <!-- P&L Summary -->
+    <!-- Fila 1: independientes del filtro -->
+    <div class="pl-summary" style="grid-template-columns:1fr 1fr;margin-bottom:10px;">
+      <div class="pl-card">
+        <div class="pl-val" id="pl-saldo" style="color:var(--blue)">$400.000</div>
+        <div class="stat-label">Saldo Coolbet</div>
+      </div>
+      <div class="pl-card">
+        <div class="pl-val" id="pl-pendiente-stake" style="color:var(--yellow)">$0</div>
+        <div class="stat-label">En Juego</div>
+      </div>
+    </div>
+
+    <!-- Fila 2: independientes del filtro -->
+    <div class="pl-summary" style="grid-template-columns:1fr 1fr;margin-bottom:10px;">
+      <div class="pl-card">
+        <div class="pl-val" id="pl-volumen" style="color:var(--blue)">$0</div>
+        <div class="stat-label">Total Apostado</div>
+      </div>
+      <div class="pl-card">
+        <div class="pl-val" id="pl-pct-bankroll" style="color:var(--blue)">0,0%</div>
+        <div class="stat-label">% Meta Bono</div>
+      </div>
+    </div>
+
+    <!-- Fila 3: real — filtrada -->
+    <div class="pl-summary" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:10px;">
+      <div class="pl-card">
+        <div class="pl-val" id="pl-total" style="color:var(--blue)">$0</div>
+        <div class="stat-label">P&L Real</div>
+      </div>
+      <div class="pl-card">
+        <div class="pl-val" id="pl-yield" style="color:var(--blue)">0,0%</div>
+        <div class="stat-label">Yield Real</div>
+      </div>
+      <div class="pl-card">
+        <div class="pl-val" id="pl-rentab-real" style="color:var(--blue)">0,0%</div>
+        <div class="stat-label">Rentab. Real</div>
+      </div>
+    </div>
+
+    <!-- Fila 4: teórico — filtrada -->
+    <div class="pl-summary" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:16px;">
+      <div class="pl-card">
+        <div class="pl-val" id="pl-teorico" style="color:#94a3b8">+$0</div>
+        <div class="stat-label">P&L Teórico</div>
+      </div>
+      <div class="pl-card">
+        <div class="pl-val" id="pl-clv-prom" style="color:#94a3b8">0,0%</div>
+        <div class="stat-label">OLV Promedio</div>
+      </div>
+      <div class="pl-card">
+        <div class="pl-val" id="pl-rentab-teorica" style="color:#94a3b8">0,0%</div>
+        <div class="stat-label">Rentab. Teórica</div>
+      </div>
+    </div>
+
+
 
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
       <button class="filter-btn active" onclick="setAnalyticsFilter('todos', this)">Todos</button>
@@ -809,7 +831,10 @@ function cambiarTab(tab, el) {
   document.getElementById(`tab-${tab}`).classList.add('active');
   el.classList.add('active');
   if (tab === 'tracker')   cargarTrackerDesdeSheets();
-  if (tab === 'analytics') renderAnalytics();
+  if (tab === 'analytics') {
+    if (apuestas.length === 0) cargarTrackerDesdeSheets().then(() => renderAnalytics());
+    else renderAnalytics();
+  }
 }
 </script>
 
@@ -893,6 +918,18 @@ const DEMO_OPORTUNIDADES = [
 let oportunidadesActuales = [];
 
 // ==================== TABS ====================
+// Parsea fecha de evento en hora Chile (evita problemas UTC)
+function parsearFechaEventoChile(str) {
+  try {
+    const match = str.match(/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
+    if (!match) return null;
+    const [_, dia, mes, hora, min] = match;
+    // new Date(año, mes-1, dia, hora, min) usa hora LOCAL del browser
+    // Si el browser está en hora Chile (GMT-4) esto es correcto
+    return new Date(2026, parseInt(mes) - 1, parseInt(dia), parseInt(hora), parseInt(min));
+  } catch(e) { return null; }
+}
+
 function setFechaAtajo(dias) {
   const hoy    = new Date();
   const hasta  = new Date();
@@ -941,7 +978,7 @@ function renderAnalytics() {
     const [dy, dm, dd] = desde.split('-').map(Number);
     const desdeDate = new Date(dy, dm - 1, dd, 0, 0, 0);
     datos = datos.filter(a => {
-      const f = parsearFechaEvento(a.fechaEvento);
+      const f = parsearFechaEventoChile(a.fechaEvento);
       return f && f >= desdeDate;
     });
   }
@@ -949,7 +986,7 @@ function renderAnalytics() {
     const [hy, hm, hd] = hasta.split('-').map(Number);
     const hastaDate = new Date(hy, hm - 1, hd, 23, 59, 59);
     datos = datos.filter(a => {
-      const f = parsearFechaEvento(a.fechaEvento);
+      const f = parsearFechaEventoChile(a.fechaEvento);
       return f && f <= hastaDate;
     });
   }
@@ -959,9 +996,11 @@ function renderAnalytics() {
   renderBarrasCuota(datos);
   renderTablaLiga(datos);
   renderProgresiónOLV(datos);
+  // Actualizar cuadrantes filtrados del summary
+  actualizarPLSummary(null);
 }
 
-function parsearFechaEvento(str) {
+function parsearFechaEventoChile(str) {
   try {
     const match = str.match(/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
     if (!match) return null;
@@ -978,8 +1017,8 @@ function destroyChart(id) {
 function renderCurvaPL(datos) {
   destroyChart('pl');
   const sorted = [...datos].sort((a, b) => {
-    const fa = parsearFechaEvento(a.fechaEvento);
-    const fb = parsearFechaEvento(b.fechaEvento);
+    const fa = parsearFechaEventoChile(a.fechaEvento);
+    const fb = parsearFechaEventoChile(b.fechaEvento);
     return (fa||0) - (fb||0);
   });
 
@@ -989,7 +1028,7 @@ function renderCurvaPL(datos) {
   sorted.forEach(a => {
     plAcum   += a.pl;
     teorAcum += (parseFloat(a.ev)||0) * a.stake / 100;
-    const f = parsearFechaEvento(a.fechaEvento);
+    const f = parsearFechaEventoChile(a.fechaEvento);
     const label = f
       ? `${f.getDate()}/${f.getMonth()+1} ${String(f.getHours()).padStart(2,'0')}:${String(f.getMinutes()).padStart(2,'0')}`
       : '?';
@@ -1157,8 +1196,8 @@ function renderTablaLiga(datos) {
 function renderProgresiónOLV(datos) {
   destroyChart('olv-prog');
   const sorted = [...datos].sort((a, b) => {
-    const fa = parsearFechaEvento(a.fechaEvento);
-    const fb = parsearFechaEvento(b.fechaEvento);
+    const fa = parsearFechaEventoChile(a.fechaEvento);
+    const fb = parsearFechaEventoChile(b.fechaEvento);
     return (fa||0) - (fb||0);
   });
 
@@ -1168,7 +1207,7 @@ function renderProgresiónOLV(datos) {
   sorted.forEach((a, i) => {
     sumOLV   += (parseFloat(a.clv)||0) * a.stake;
     sumStake += a.stake;
-    const f = parsearFechaEvento(a.fechaEvento);
+    const f = parsearFechaEventoChile(a.fechaEvento);
     const label = f
       ? `${f.getDate()}/${f.getMonth()+1} ${String(f.getHours()).padStart(2,'0')}:${String(f.getMinutes()).padStart(2,'0')}`
       : '?';
@@ -1604,7 +1643,10 @@ function fmtPct(n, decimals = 1) {
   return n.toFixed(decimals).replace('.', ',');
 }
 
-// ==================== CALCULADORA KELLY ====================
+// Carga inicial — Analytics es el tab por defecto
+window.addEventListener('load', () => {
+  cargarTrackerDesdeSheets().then(() => renderAnalytics());
+});
 function calcularKelly() {
   const coolbet  = parseFloat(document.getElementById('k-coolbet').value);
   const pinnacle = parseFloat(document.getElementById('k-pinnacle').value);
@@ -1715,7 +1757,7 @@ function precargarApuesta_aumentar(idx) {
   document.getElementById('f-stake').value = o.stakeExtra;
   document.getElementById('f-evento').dataset.deporte = o.deporte;
   document.getElementById('f-evento').dataset.fecha   = o.fecha;
-  cambiarTab('tracker', document.querySelectorAll('.nav-tab')[1]);
+  cambiarTab('tracker', document.querySelectorAll('.nav-tab')[2]);
   mostrarToast('✓ Datos cargados — confirma el stake adicional');
 }
 
@@ -1743,7 +1785,7 @@ function precargarApuesta(idx) {
   document.getElementById('f-stake').value = o.stake;
   document.getElementById('f-evento').dataset.deporte = o.deporte;
   document.getElementById('f-evento').dataset.fecha   = o.fecha;
-  cambiarTab('tracker', document.querySelectorAll('.nav-tab')[1]);
+  cambiarTab('tracker', document.querySelectorAll('.nav-tab')[2]);
   mostrarToast('✓ Datos cargados — confirma y registra');
 }
 
@@ -1833,69 +1875,131 @@ function actualizarPLSummary(resumen) {
   const BANKROLL_REFERENCIA = 1200000;
   const SALDO_INICIAL       = 400000;
 
-  const r = resumen || {
-    plTotal: 0, yield: 0, total: apuestas.length, clvProm: 0
-  };
+  // ── Filas 1 y 2: métricas independientes del filtro ─────────
+  // Calculadas sobre TODAS las apuestas
 
-  // Base: apuestas resueltas (misma base para yield, OLV y P&L teórico)
-  const cerradas        = apuestas.filter(a => a.resultado !== 'pendiente');
-  const pendientes      = apuestas.filter(a => a.resultado === 'pendiente');
-  const volumenResuelto = cerradas.reduce((s, a) => s + a.stake, 0);
-  const stakePendiente  = pendientes.reduce((s, a) => s + a.stake, 0);
+  const todasCerradas   = apuestas.filter(a => a.resultado !== 'pendiente');
+  const todasPendientes = apuestas.filter(a => a.resultado === 'pendiente');
+  const plTotalGlobal   = todasCerradas.reduce((s, a) => s + a.pl, 0);
+  const stakePendiente  = todasPendientes.reduce((s, a) => s + a.stake, 0);
   const volumenTotal    = apuestas.reduce((s, a) => s + a.stake, 0);
 
-  // (1,1) P&L Real
-  const plEl  = document.getElementById('pl-total');
-  const plAbs = Math.abs(r.plTotal);
-  plEl.textContent = (r.plTotal >= 0 ? '+$' : '-$') + plAbs.toLocaleString('es-CL');
-  plEl.className = 'pl-val ' + (r.plTotal > 0 ? 'positivo' : r.plTotal < 0 ? 'negativo' : 'neutral');
-
-  // (1,2) Yield = P&L Real / Volumen resuelto
-  const yieldReal = volumenResuelto > 0 ? (r.plTotal / volumenResuelto * 100) : 0;
-  const yieldEl = document.getElementById('pl-yield');
-  yieldEl.textContent = (yieldReal >= 0 ? '+' : '') + fmtPct(yieldReal) + '%';
-  yieldEl.className = 'pl-val ' + (yieldReal > 0 ? 'positivo' : yieldReal < 0 ? 'negativo' : 'neutral');
-
-  // (2,1) P&L Teórico = Σ(EV% × Stake) solo resueltas
-  const plTeorico = cerradas.reduce((s, a) => s + (parseFloat(a.ev)||0) * a.stake / 100, 0);
-  const teoEl = document.getElementById('pl-teorico');
-  if (teoEl) {
-    teoEl.textContent = (plTeorico >= 0 ? '+$' : '-$') + Math.abs(Math.round(plTeorico)).toLocaleString('es-CL');
-    teoEl.className = 'pl-val ' + (plTeorico > 0 ? 'positivo' : plTeorico < 0 ? 'negativo' : 'neutral');
-  }
-
-  // (2,2) OLV ponderado solo sobre resueltas
-  const olvPonderado = volumenResuelto > 0
-    ? cerradas.reduce((s, a) => s + (parseFloat(a.clv)||0) * a.stake, 0) / volumenResuelto
-    : 0;
-  document.getElementById('pl-clv-prom').textContent = '+' + fmtPct(olvPonderado) + '%';
-
-  // (3,1) Saldo Coolbet = inicial + P&L resuelto - stakes pendientes
-  const saldoActual = SALDO_INICIAL + r.plTotal - stakePendiente;
+  // Saldo Coolbet
+  const saldoActual = SALDO_INICIAL + plTotalGlobal - stakePendiente;
   const saldoEl = document.getElementById('pl-saldo');
   if (saldoEl) {
     saldoEl.textContent = '$' + Math.max(0, saldoActual).toLocaleString('es-CL');
     saldoEl.className = 'pl-val ' + (saldoActual >= SALDO_INICIAL ? 'positivo' : 'negativo');
+    saldoEl.style.color = 'var(--blue)';
   }
 
-  // (3,2) En Juego
+  // En Juego
   const pendEl = document.getElementById('pl-pendiente-stake');
   if (pendEl) pendEl.textContent = '$' + stakePendiente.toLocaleString('es-CL');
 
-  // (4,1) Total apostado histórico
+  // Total Apostado
   const volEl = document.getElementById('pl-volumen');
   if (volEl) volEl.textContent = '$' + volumenTotal.toLocaleString('es-CL');
-  const faltante = Math.max(0, BANKROLL_REFERENCIA - volumenResuelto);
-  const volResEl = document.getElementById('pl-volumen-resuelto');
-  if (volResEl) volResEl.textContent = `faltan: $${faltante.toLocaleString('es-CL')}`;
 
-  // (4,2) % Meta Bono ($1.200.000)
+  // % Meta Bono
   const pctBankroll = volumenTotal > 0 ? (volumenTotal / BANKROLL_REFERENCIA * 100) : 0;
   const pctEl = document.getElementById('pl-pct-bankroll');
   if (pctEl) {
     pctEl.textContent = fmtPct(pctBankroll) + '%';
     pctEl.className = 'pl-val neutral';
     pctEl.style.color = 'var(--blue)';
+  }
+
+  // ── Filas 3 y 4: métricas filtradas por fecha ─────────────
+  // Aplicar filtro de fecha del Analytics (desde/hasta)
+  const desde = document.getElementById('analytics-desde')?.value;
+  const hasta  = document.getElementById('analytics-hasta')?.value;
+
+  let cerradas = todasCerradas;
+  if (desde) {
+    const [dy, dm, dd] = desde.split('-').map(Number);
+    const desdeDate = new Date(dy, dm - 1, dd, 0, 0, 0);
+    cerradas = cerradas.filter(a => {
+      const f = parsearFechaEventoChile(a.fechaEvento);
+      return f && f >= desdeDate;
+    });
+  }
+  if (hasta) {
+    const [hy, hm, hd] = hasta.split('-').map(Number);
+    const hastaDate = new Date(hy, hm - 1, hd, 23, 59, 59);
+    cerradas = cerradas.filter(a => {
+      const f = parsearFechaEventoChile(a.fechaEvento);
+      return f && f <= hastaDate;
+    });
+  }
+
+  const volumenResuelto = cerradas.reduce((s, a) => s + a.stake, 0);
+  const plReal          = cerradas.reduce((s, a) => s + a.pl, 0);
+  const plTeorico       = cerradas.reduce((s, a) => s + (parseFloat(a.ev)||0) * a.stake / 100, 0);
+  const olvPonderado    = volumenResuelto > 0
+    ? cerradas.reduce((s, a) => s + (parseFloat(a.clv)||0) * a.stake, 0) / volumenResuelto
+    : 0;
+
+  // Saldo inicial del período = $400.000 + P&L de apuestas resueltas ANTES del período
+  let saldoInicioPeriodo = SALDO_INICIAL;
+  if (desde) {
+    const [dy, dm, dd] = desde.split('-').map(Number);
+    const desdeDate = new Date(dy, dm - 1, dd, 0, 0, 0);
+    const antesDelPeriodo = todasCerradas.filter(a => {
+      const f = parsearFechaEventoChile(a.fechaEvento);
+      return f && f < desdeDate;
+    });
+    saldoInicioPeriodo = SALDO_INICIAL + antesDelPeriodo.reduce((s, a) => s + a.pl, 0);
+  }
+
+  const yieldReal    = volumenResuelto > 0 ? (plReal / volumenResuelto * 100) : 0;
+  const rentabReal   = saldoInicioPeriodo > 0 ? (plReal / saldoInicioPeriodo * 100) : 0;
+  const rentabTeorica = saldoInicioPeriodo > 0 ? (plTeorico / saldoInicioPeriodo * 100) : 0;
+
+  // P&L Real
+  const plEl = document.getElementById('pl-total');
+  if (plEl) {
+    plEl.textContent = (plReal >= 0 ? '+$' : '-$') + Math.abs(Math.round(plReal)).toLocaleString('es-CL');
+    plEl.className = 'pl-val ' + (plReal > 0 ? 'positivo' : plReal < 0 ? 'negativo' : 'neutral');
+    plEl.style.color = plReal >= 0 ? 'var(--blue)' : 'var(--red)';
+  }
+
+  // Yield Real
+  const yieldEl = document.getElementById('pl-yield');
+  if (yieldEl) {
+    yieldEl.textContent = (yieldReal >= 0 ? '+' : '') + fmtPct(yieldReal) + '%';
+    yieldEl.className = 'pl-val ' + (yieldReal > 0 ? 'positivo' : yieldReal < 0 ? 'negativo' : 'neutral');
+    yieldEl.style.color = yieldReal >= 0 ? 'var(--blue)' : 'var(--red)';
+  }
+
+  // Rentabilidad Real
+  const rentabRealEl = document.getElementById('pl-rentab-real');
+  if (rentabRealEl) {
+    rentabRealEl.textContent = (rentabReal >= 0 ? '+' : '') + fmtPct(rentabReal) + '%';
+    rentabRealEl.className = 'pl-val ' + (rentabReal > 0 ? 'positivo' : rentabReal < 0 ? 'negativo' : 'neutral');
+    rentabRealEl.style.color = rentabReal >= 0 ? 'var(--blue)' : 'var(--red)';
+  }
+
+  // P&L Teórico
+  const teoEl = document.getElementById('pl-teorico');
+  if (teoEl) {
+    teoEl.textContent = (plTeorico >= 0 ? '+$' : '-$') + Math.abs(Math.round(plTeorico)).toLocaleString('es-CL');
+    teoEl.className = 'pl-val ' + (plTeorico > 0 ? 'positivo' : plTeorico < 0 ? 'negativo' : 'neutral');
+    teoEl.style.color = '#94a3b8';
+  }
+
+  // OLV Promedio
+  const olvEl = document.getElementById('pl-clv-prom');
+  if (olvEl) {
+    olvEl.textContent = (olvPonderado >= 0 ? '+' : '') + fmtPct(olvPonderado) + '%';
+    olvEl.style.color = '#94a3b8';
+  }
+
+  // Rentabilidad Teórica
+  const rentabTeoEl = document.getElementById('pl-rentab-teorica');
+  if (rentabTeoEl) {
+    rentabTeoEl.textContent = (rentabTeorica >= 0 ? '+' : '') + fmtPct(rentabTeorica) + '%';
+    rentabTeoEl.style.color = '#94a3b8';
   }
 }
 
