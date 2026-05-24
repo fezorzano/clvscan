@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v24/05 15:05</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v24/05 15:14</div>
     </div>
   </div>
 
@@ -700,13 +700,13 @@
   <div class="tab-content active" id="tab-analytics">
 
     <!-- Filtro de fecha -->
-    <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">
+    <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
       <button class="filter-btn active" id="btn-fecha-todo" onclick="setFechaAtajo(-1, this)">Todo</button>
       <button class="filter-btn" id="btn-fecha-hoy" onclick="setFechaAtajo(0, this)">Hoy</button>
       <button class="filter-btn" id="btn-fecha-ayer" onclick="setFechaAtajo(1, this)">Ayer</button>
       <button class="filter-btn" id="btn-fecha-7" onclick="setFechaAtajo(7, this)">7 días</button>
       <button class="filter-btn" id="btn-fecha-30" onclick="setFechaAtajo(30, this)">30 días</button>
-      <div id="analytics-periodo" style="margin-left:auto;font-size:10px;color:var(--muted);font-family:var(--font-mono);align-self:center;"></div>
+      <div id="analytics-periodo" style="width:100%;text-align:center;font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-top:4px;"></div>
     </div>
 
     <!-- P&L Summary -->
@@ -772,6 +772,11 @@
     <!-- inputs ocultos para compatibilidad con lógica de filtros -->
     <input type="date" id="analytics-desde" style="display:none;">
     <input type="date" id="analytics-hasta" style="display:none;">
+
+    <!-- 0. Waterfall saldo -->
+    <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <canvas id="chart-waterfall" height="160"></canvas>
+    </div>
 
     <!-- 1. Curva P&L acumulado -->
     <div class="section-title">Curva P&L Acumulado</div>
@@ -936,25 +941,30 @@ function setFechaAtajo(dias, el) {
   const desde = document.getElementById('analytics-desde');
   const hasta  = document.getElementById('analytics-hasta');
 
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const fmtMes = d => {
+    const parts = d.split('-');
+    return `${parts[2]}-${meses[parseInt(parts[1])-1]}`;
+  };
+
   if (dias === -1) {
-    // Todo — sin filtro
     desde.value = '';
     hasta.value  = '';
     document.getElementById('analytics-periodo').textContent = '';
   } else if (dias === 0) {
     desde.value = fmt(hoy);
     hasta.value  = fmt(hoy);
-    document.getElementById('analytics-periodo').textContent = fmt(hoy).slice(5).replace('-','/');
+    document.getElementById('analytics-periodo').textContent = fmtMes(fmt(hoy));
   } else if (dias === 1) {
     const ayer = new Date(hoy); ayer.setDate(hoy.getDate() - 1);
     desde.value = fmt(ayer);
     hasta.value  = fmt(ayer);
-    document.getElementById('analytics-periodo').textContent = fmt(ayer).slice(5).replace('-','/');
+    document.getElementById('analytics-periodo').textContent = fmtMes(fmt(ayer));
   } else {
     const d = new Date(hoy); d.setDate(hoy.getDate() - dias);
     desde.value = fmt(d);
     hasta.value  = fmt(hoy);
-    document.getElementById('analytics-periodo').textContent = `${fmt(d).slice(5).replace('-','/')} → ${fmt(hoy).slice(5).replace('-','/')}`;
+    document.getElementById('analytics-periodo').textContent = `${fmtMes(fmt(d))} → ${fmtMes(fmt(hoy))}`;
   }
   renderAnalytics();
 }
@@ -994,6 +1004,7 @@ function renderAnalytics() {
     });
   }
 
+  renderWaterfall(datos);
   renderCurvaPL(datos);
   renderBarrasOLV(datos);
   renderBarrasCuota(datos);
@@ -1014,6 +1025,94 @@ function parsearFechaEventoChile(str) {
 
 function destroyChart(id) {
   if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+// 0. Waterfall saldo
+function renderWaterfall(datosFiltrados) {
+  destroyChart('waterfall');
+
+  const SALDO_INICIAL = 400000;
+
+  // Saldo inicial del período = $400k + P&L resuelto ANTES del período
+  const desde = document.getElementById('analytics-desde')?.value;
+  const todasCerradas = apuestas.filter(a => a.resultado !== 'pendiente');
+
+  let saldoInicio = SALDO_INICIAL;
+  if (desde) {
+    const [dy, dm, dd] = desde.split('-').map(Number);
+    const desdeDate = new Date(dy, dm - 1, dd, 0, 0, 0);
+    const antes = todasCerradas.filter(a => {
+      const f = parsearFechaEventoChile(a.fechaEvento);
+      return f && f < desdeDate;
+    });
+    saldoInicio = SALDO_INICIAL + antes.reduce((s, a) => s + a.pl, 0);
+  }
+
+  const plPeriodo   = datosFiltrados.reduce((s, a) => s + a.pl, 0);
+  const enJuego     = apuestas.filter(a => a.resultado === 'pendiente').reduce((s, a) => s + a.stake, 0);
+  const saldoActual = saldoInicio + plPeriodo - enJuego;
+
+  // Waterfall con barras flotantes [base, tope]
+  // Barra 1: Saldo inicial → [0, saldoInicio]
+  // Barra 2: P&L → [saldoInicio, saldoInicio + plPeriodo]
+  // Barra 3: En juego → [saldoInicio + plPeriodo - enJuego, saldoInicio + plPeriodo]
+  // Barra 4: Saldo actual → [0, saldoActual]
+
+  const b2base = saldoInicio;
+  const b2top  = saldoInicio + plPeriodo;
+  const b3base = b2top - enJuego;
+  const b3top  = b2top;
+
+  const fmt = v => '$' + Math.round(Math.abs(v)/1000) + 'k';
+
+  const ctx = document.getElementById('chart-waterfall').getContext('2d');
+  charts['waterfall'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Saldo inicial', plPeriodo >= 0 ? 'P&L (+)' : 'P&L (−)', 'En juego', 'Saldo actual'],
+      datasets: [{
+        data: [
+          [0, saldoInicio],
+          [Math.min(b2base, b2top), Math.max(b2base, b2top)],
+          [b3base, b3top],
+          [0, Math.max(0, saldoActual)],
+        ],
+        backgroundColor: [
+          '#60a5fa',
+          plPeriodo >= 0 ? '#4ade80' : '#f87171',
+          '#f59e0b',
+          '#60a5fa',
+        ],
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const [base, top] = ctx.raw;
+              const val = top - base;
+              const labels = ['Saldo inicial', 'P&L período', 'En juego', 'Saldo actual'];
+              return `${labels[ctx.dataIndex]}: $${Math.round(Math.abs(val)).toLocaleString('es-CL')}`;
+            }
+          }
+        },
+        datalabels: { display: false },
+      },
+      scales: {
+        x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { display: false } },
+        y: {
+          ticks: { color: '#64748b', font: { size: 9 }, callback: v => `$${(v/1000).toFixed(0)}k` },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          min: Math.min(0, b3base - Math.abs(plPeriodo) * 0.1),
+        }
+      }
+    }
+  });
 }
 
 // 1. Curva P&L acumulado por fecha de evento
@@ -1041,12 +1140,17 @@ function renderCurvaPL(datos) {
   });
 
   const ctx = document.getElementById('chart-pl').getContext('2d');
+
+  // Eliminar leyenda HTML manual si existe
+  const prevLegend = document.getElementById('chart-pl-legend');
+  if (prevLegend) prevLegend.remove();
+
   charts['pl'] = new Chart(ctx, {
     type: 'line',
     data: {
       labels,
       datasets: [
-        { label: 'P&L Real',     data: plData,   borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)',  tension: 0.3, fill: true,  pointRadius: 2 },
+        { label: 'P&L Real',    data: plData,   borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)',  tension: 0.3, fill: true,  pointRadius: 2 },
         { label: 'P&L Teórico', data: teorData, borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,0.1)', tension: 0.3, fill: false, pointRadius: 2, borderDash: [4,4] }
       ]
     },
@@ -1054,7 +1158,29 @@ function renderCurvaPL(datos) {
       responsive: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { display: false },
+        legend: {
+          display: true,
+          labels: {
+            color: '#94a3b8',
+            font: { size: 10 },
+            usePointStyle: true,
+            pointStyle: 'line',
+            boxWidth: 30,
+            generateLabels(chart) {
+              return chart.data.datasets.map((ds, i) => ({
+                text:         ds.label,
+                strokeStyle:  ds.borderColor,
+                fillStyle:    'transparent',
+                lineDash:     ds.borderDash || [],
+                lineWidth:    2,
+                fontColor:    ds.borderColor,
+                hidden:       !chart.isDatasetVisible(i),
+                datasetIndex: i,
+                pointStyle:   'line',
+              }));
+            }
+          }
+        },
         tooltip: {
           mode: 'index',
           intersect: false,
@@ -1070,12 +1196,6 @@ function renderCurvaPL(datos) {
       }
     }
   });
-  // Leyenda HTML manual con colores correctos
-  document.getElementById('chart-pl').insertAdjacentHTML('beforebegin',
-    `<div style="text-align:center;margin-bottom:6px;font-size:10px;">
-      <span style="color:#60a5fa;margin-right:16px;">— P&L Real</span>
-      <span style="color:#94a3b8;">- - P&L Teórico</span>
-    </div>`);
 }
 
 // 2. Barras por rango OLV
