@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v24/05 15:27</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v24/05 15:44</div>
     </div>
   </div>
 
@@ -730,8 +730,8 @@
         <div style="font-size:10px;color:var(--blue);margin-top:2px;" id="pl-volumen-resuelto"></div>
       </div>
       <div class="pl-card">
-        <div class="pl-val" id="pl-pct-bankroll" style="color:var(--blue)">0,0%</div>
-        <div class="stat-label">% Meta Bono</div>
+        <div class="pl-val" id="pl-pct-bankroll" style="color:var(--blue)">0</div>
+        <div class="stat-label">Eventos resueltos</div>
       </div>
     </div>
 
@@ -927,11 +927,16 @@ let oportunidadesActuales = [];
 // Parsea fecha de evento en hora Chile (evita problemas UTC)
 function parsearFechaEventoChile(str) {
   try {
+    // Formato nuevo: "Sáb 16/05/26 12:00 (CL)"
+    const matchConAnio = str.match(/(\d{2})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
+    if (matchConAnio) {
+      const [_, dia, mes, anio, hora, min] = matchConAnio;
+      return new Date(2000 + parseInt(anio), parseInt(mes) - 1, parseInt(dia), parseInt(hora), parseInt(min));
+    }
+    // Formato antiguo sin año: "Sáb 16/05 12:00 (CL)" → asume 2026
     const match = str.match(/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
     if (!match) return null;
-    const [_, dia, mes, hora, min] = match;
-    // new Date(año, mes-1, dia, hora, min) usa hora LOCAL del browser
-    // Si el browser está en hora Chile (GMT-4) esto es correcto
+    const [__, dia, mes, hora, min] = match;
     return new Date(2026, parseInt(mes) - 1, parseInt(dia), parseInt(hora), parseInt(min));
   } catch(e) { return null; }
 }
@@ -2051,104 +2056,14 @@ function actualizarPLSummary(resumen) {
   const volResEl = document.getElementById('pl-volumen-resuelto');
   if (volResEl) volResEl.textContent = faltante > 0 ? `faltan: $${faltante.toLocaleString('es-CL')}` : '✓ Meta cumplida';
 
-  // % Meta Bono
-  const pctBankroll = volumenTotal > 0 ? (volumenTotal / BANKROLL_REFERENCIA * 100) : 0;
+  // Eventos únicos en el período (agrupados por nombre de evento)
+  const eventosUnicos = new Set(cerradas.map(a => `${a.evento}|${a.fechaEvento}`)).size;
   const pctEl = document.getElementById('pl-pct-bankroll');
   if (pctEl) {
-    pctEl.textContent = fmtPct(pctBankroll) + '%';
-    pctEl.className = 'pl-val neutral';
+    pctEl.textContent = eventosUnicos;
+    pctEl.className = 'pl-val';
     pctEl.style.color = 'var(--blue)';
   }
-
-  // ── Filas 3 y 4: métricas filtradas por fecha ─────────────
-  // Aplicar filtro de fecha del Analytics (desde/hasta)
-  const desde = document.getElementById('analytics-desde')?.value;
-  const hasta  = document.getElementById('analytics-hasta')?.value;
-
-  let cerradas = todasCerradas;
-  if (desde) {
-    const [dy, dm, dd] = desde.split('-').map(Number);
-    const desdeDate = new Date(dy, dm - 1, dd, 0, 0, 0);
-    cerradas = cerradas.filter(a => {
-      const f = parsearFechaEventoChile(a.fechaEvento);
-      return f && f >= desdeDate;
-    });
-  }
-  if (hasta) {
-    const [hy, hm, hd] = hasta.split('-').map(Number);
-    const hastaDate = new Date(hy, hm - 1, hd, 23, 59, 59);
-    cerradas = cerradas.filter(a => {
-      const f = parsearFechaEventoChile(a.fechaEvento);
-      return f && f <= hastaDate;
-    });
-  }
-
-  const volumenResuelto = cerradas.reduce((s, a) => s + a.stake, 0);
-  const plReal          = cerradas.reduce((s, a) => s + a.pl, 0);
-  const plTeorico       = cerradas.reduce((s, a) => s + (parseFloat(a.ev)||0) * a.stake / 100, 0);
-  const olvPonderado    = volumenResuelto > 0
-    ? cerradas.reduce((s, a) => s + (parseFloat(a.clv)||0) * a.stake, 0) / volumenResuelto
-    : 0;
-
-  // Saldo inicial del período = $400.000 + P&L de apuestas resueltas ANTES del período
-  let saldoInicioPeriodo = SALDO_INICIAL;
-  if (desde) {
-    const [dy, dm, dd] = desde.split('-').map(Number);
-    const desdeDate = new Date(dy, dm - 1, dd, 0, 0, 0);
-    const antesDelPeriodo = todasCerradas.filter(a => {
-      const f = parsearFechaEventoChile(a.fechaEvento);
-      return f && f < desdeDate;
-    });
-    saldoInicioPeriodo = SALDO_INICIAL + antesDelPeriodo.reduce((s, a) => s + a.pl, 0);
-  }
-
-  const yieldReal    = volumenResuelto > 0 ? (plReal / volumenResuelto * 100) : 0;
-  const rentabReal   = saldoInicioPeriodo > 0 ? (plReal / saldoInicioPeriodo * 100) : 0;
-  const rentabTeorica = saldoInicioPeriodo > 0 ? (plTeorico / saldoInicioPeriodo * 100) : 0;
-
-  // P&L Real
-  const plEl = document.getElementById('pl-total');
-  if (plEl) {
-    plEl.textContent = (plReal >= 0 ? '+$' : '-$') + Math.abs(Math.round(plReal)).toLocaleString('es-CL');
-    plEl.style.color = plReal > 0 ? '#4ade80' : plReal < 0 ? '#f87171' : 'var(--blue)';
-  }
-
-  // Yield Real
-  const yieldEl = document.getElementById('pl-yield');
-  if (yieldEl) {
-    yieldEl.textContent = (yieldReal >= 0 ? '+' : '') + fmtPct(yieldReal) + '%';
-    yieldEl.style.color = yieldReal > 0 ? '#4ade80' : yieldReal < 0 ? '#f87171' : 'var(--blue)';
-  }
-
-  // Rentabilidad Real
-  const rentabRealEl = document.getElementById('pl-rentab-real');
-  if (rentabRealEl) {
-    rentabRealEl.textContent = (rentabReal >= 0 ? '+' : '') + fmtPct(rentabReal) + '%';
-    rentabRealEl.style.color = rentabReal > 0 ? '#4ade80' : rentabReal < 0 ? '#f87171' : 'var(--blue)';
-  }
-
-  // P&L Teórico
-  const teoEl = document.getElementById('pl-teorico');
-  if (teoEl) {
-    teoEl.textContent = (plTeorico >= 0 ? '+$' : '-$') + Math.abs(Math.round(plTeorico)).toLocaleString('es-CL');
-    teoEl.className = 'pl-val ' + (plTeorico > 0 ? 'positivo' : plTeorico < 0 ? 'negativo' : 'neutral');
-    teoEl.style.color = '#94a3b8';
-  }
-
-  // OLV Promedio
-  const olvEl = document.getElementById('pl-clv-prom');
-  if (olvEl) {
-    olvEl.textContent = (olvPonderado >= 0 ? '+' : '') + fmtPct(olvPonderado) + '%';
-    olvEl.style.color = '#94a3b8';
-  }
-
-  // Rentabilidad Teórica
-  const rentabTeoEl = document.getElementById('pl-rentab-teorica');
-  if (rentabTeoEl) {
-    rentabTeoEl.textContent = (rentabTeorica >= 0 ? '+' : '') + fmtPct(rentabTeorica) + '%';
-    rentabTeoEl.style.color = '#94a3b8';
-  }
-}
 
 // ==================== UTILS ====================
 function mostrarToast(msg) {
