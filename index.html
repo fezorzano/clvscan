@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v24/05 15:14</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v24/05 15:19</div>
     </div>
   </div>
 
@@ -814,7 +814,12 @@
 
 <!-- Chart.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
 <script>
+// Registrar plugin datalabels pero desactivarlo globalmente — solo waterfall lo usa
+Chart.register(ChartDataLabels);
+Chart.defaults.set('plugins.datalabels', { display: false });
+
 // ==================== ANALYTICS ====================
 let analyticsFilter = 'todos';
 let charts = {};
@@ -1085,6 +1090,25 @@ function renderWaterfall(datosFiltrados) {
         ],
         borderRadius: 4,
         borderSkipped: false,
+        datalabels: {
+          display: true,
+          anchor: ctx => {
+            const [base, top] = ctx.dataset.data[ctx.dataIndex];
+            return top >= base ? 'end' : 'start';
+          },
+          align: ctx => {
+            const [base, top] = ctx.dataset.data[ctx.dataIndex];
+            return top >= base ? 'top' : 'bottom';
+          },
+          color: '#f8fafc',
+          font: { size: 9, family: 'monospace' },
+          formatter: (val) => {
+            const diff = val[1] - val[0];
+            const abs = Math.abs(Math.round(diff));
+            const prefix = diff < 0 ? '-$' : '$';
+            return prefix + abs.toLocaleString('es-CL');
+          }
+        }
       }]
     },
     options: {
@@ -1150,8 +1174,8 @@ function renderCurvaPL(datos) {
     data: {
       labels,
       datasets: [
-        { label: 'P&L Real',    data: plData,   borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)',  tension: 0.3, fill: true,  pointRadius: 2 },
-        { label: 'P&L Teórico', data: teorData, borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,0.1)', tension: 0.3, fill: false, pointRadius: 2, borderDash: [4,4] }
+        { label: 'P&L Real',    data: plData,   borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)',  tension: 0.3, fill: true,  pointRadius: 0, pointHoverRadius: 4 },
+        { label: 'P&L Teórico', data: teorData, borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,0.1)', tension: 0.3, fill: false, pointRadius: 0, pointHoverRadius: 4, borderDash: [4,4] }
       ]
     },
     options: {
