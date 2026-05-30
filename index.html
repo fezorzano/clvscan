@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v24/05 15:27</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v29/05 20:02</div>
     </div>
   </div>
 
@@ -727,11 +727,10 @@
       <div class="pl-card">
         <div class="pl-val" id="pl-volumen" style="color:var(--blue)">$0</div>
         <div class="stat-label">Total Apostado</div>
-        <div style="font-size:10px;color:var(--blue);margin-top:2px;" id="pl-volumen-resuelto"></div>
       </div>
       <div class="pl-card">
-        <div class="pl-val" id="pl-pct-bankroll" style="color:var(--blue)">0,0%</div>
-        <div class="stat-label">% Meta Bono</div>
+        <div class="pl-val" id="pl-pct-bankroll" style="color:var(--blue)">0</div>
+        <div class="stat-label">Eventos resueltos</div>
       </div>
     </div>
 
@@ -927,22 +926,32 @@ let oportunidadesActuales = [];
 // Parsea fecha de evento en hora Chile (evita problemas UTC)
 function parsearFechaEventoChile(str) {
   try {
+    // Formato nuevo con año: "Sáb 16/05/26 12:00 (CL)"
+    const matchConAnio = str.match(/(\d{2})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
+    if (matchConAnio) {
+      const [_, dia, mes, anio, hora, min] = matchConAnio;
+      return new Date(2000 + parseInt(anio), parseInt(mes) - 1, parseInt(dia), parseInt(hora), parseInt(min));
+    }
+    // Formato antiguo sin año: "Sáb 16/05 12:00 (CL)" → asume 2026
     const match = str.match(/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
     if (!match) return null;
-    const [_, dia, mes, hora, min] = match;
-    // new Date(año, mes-1, dia, hora, min) usa hora LOCAL del browser
-    // Si el browser está en hora Chile (GMT-4) esto es correcto
+    const [__, dia, mes, hora, min] = match;
     return new Date(2026, parseInt(mes) - 1, parseInt(dia), parseInt(hora), parseInt(min));
   } catch(e) { return null; }
 }
 
 function setFechaAtajo(dias, el) {
-  // Marcar botón activo
   document.querySelectorAll('#tab-analytics .filter-btn').forEach(b => b.classList.remove('active'));
   if (el) el.classList.add('active');
 
-  const hoy   = new Date();
-  const fmt   = d => d.toISOString().split('T')[0];
+  // Usar hora Chile explícitamente (no toISOString que convierte a UTC)
+  const ahoraChile = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
+  const fmtChile = d => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+  };
   const desde = document.getElementById('analytics-desde');
   const hasta  = document.getElementById('analytics-hasta');
 
@@ -957,19 +966,23 @@ function setFechaAtajo(dias, el) {
     hasta.value  = '';
     document.getElementById('analytics-periodo').textContent = '';
   } else if (dias === 0) {
-    desde.value = fmt(hoy);
-    hasta.value  = fmt(hoy);
-    document.getElementById('analytics-periodo').textContent = fmtMes(fmt(hoy));
+    const hoy = fmtChile(ahoraChile);
+    desde.value = hoy;
+    hasta.value  = hoy;
+    document.getElementById('analytics-periodo').textContent = fmtMes(hoy);
   } else if (dias === 1) {
-    const ayer = new Date(hoy); ayer.setDate(hoy.getDate() - 1);
-    desde.value = fmt(ayer);
-    hasta.value  = fmt(ayer);
-    document.getElementById('analytics-periodo').textContent = fmtMes(fmt(ayer));
+    const ayer = new Date(ahoraChile); ayer.setDate(ayer.getDate() - 1);
+    const ayerStr = fmtChile(ayer);
+    desde.value = ayerStr;
+    hasta.value  = ayerStr;
+    document.getElementById('analytics-periodo').textContent = fmtMes(ayerStr);
   } else {
-    const d = new Date(hoy); d.setDate(hoy.getDate() - dias);
-    desde.value = fmt(d);
-    hasta.value  = fmt(hoy);
-    document.getElementById('analytics-periodo').textContent = `${fmtMes(fmt(d))} → ${fmtMes(fmt(hoy))}`;
+    const d = new Date(ahoraChile); d.setDate(d.getDate() - dias);
+    const dStr   = fmtChile(d);
+    const hoyStr = fmtChile(ahoraChile);
+    desde.value = dStr;
+    hasta.value  = hoyStr;
+    document.getElementById('analytics-periodo').textContent = `${fmtMes(dStr)} → ${fmtMes(hoyStr)}`;
   }
   renderAnalytics();
 }
@@ -2044,21 +2057,7 @@ function actualizarPLSummary(resumen) {
   const pendEl = document.getElementById('pl-pendiente-stake');
   if (pendEl) pendEl.textContent = '$' + stakePendiente.toLocaleString('es-CL');
 
-  // Total Apostado
-  const volEl = document.getElementById('pl-volumen');
-  if (volEl) volEl.textContent = '$' + volumenTotal.toLocaleString('es-CL');
-  const faltante = Math.max(0, BANKROLL_REFERENCIA - todasCerradas.reduce((s,a) => s+a.stake, 0));
-  const volResEl = document.getElementById('pl-volumen-resuelto');
-  if (volResEl) volResEl.textContent = faltante > 0 ? `faltan: $${faltante.toLocaleString('es-CL')}` : '✓ Meta cumplida';
-
-  // % Meta Bono
-  const pctBankroll = volumenTotal > 0 ? (volumenTotal / BANKROLL_REFERENCIA * 100) : 0;
-  const pctEl = document.getElementById('pl-pct-bankroll');
-  if (pctEl) {
-    pctEl.textContent = fmtPct(pctBankroll) + '%';
-    pctEl.className = 'pl-val neutral';
-    pctEl.style.color = 'var(--blue)';
-  }
+  // Total Apostado y Eventos resueltos — se calculan sobre cerradas filtradas más abajo
 
   // ── Filas 3 y 4: métricas filtradas por fecha ─────────────
   // Aplicar filtro de fecha del Analytics (desde/hasta)
@@ -2100,6 +2099,19 @@ function actualizarPLSummary(resumen) {
       return f && f < desdeDate;
     });
     saldoInicioPeriodo = SALDO_INICIAL + antesDelPeriodo.reduce((s, a) => s + a.pl, 0);
+  }
+
+  // Total Apostado filtrado
+  const volEl = document.getElementById('pl-volumen');
+  if (volEl) volEl.textContent = '$' + volumenResuelto.toLocaleString('es-CL');
+
+  // Eventos resueltos únicos filtrados (evento + fechaEvento)
+  const eventosUnicos = new Set(cerradas.map(a => `${a.evento}|${a.fechaEvento}`)).size;
+  const pctEl = document.getElementById('pl-pct-bankroll');
+  if (pctEl) {
+    pctEl.textContent = eventosUnicos;
+    pctEl.className = 'pl-val';
+    pctEl.style.color = 'var(--blue)';
   }
 
   const yieldReal    = volumenResuelto > 0 ? (plReal / volumenResuelto * 100) : 0;
