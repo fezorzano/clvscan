@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v29/05 20:02</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v29/05 21:40</div>
     </div>
   </div>
 
@@ -926,17 +926,26 @@ let oportunidadesActuales = [];
 // Parsea fecha de evento en hora Chile (evita problemas UTC)
 function parsearFechaEventoChile(str) {
   try {
-    // Formato nuevo con año: "Sáb 16/05/26 12:00 (CL)"
+    // Formato con año: "Sáb 16/05/26 12:00 (CL)" — buscar dd/MM/yy HH:mm
     const matchConAnio = str.match(/(\d{2})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
     if (matchConAnio) {
-      const [_, dia, mes, anio, hora, min] = matchConAnio;
-      return new Date(2000 + parseInt(anio), parseInt(mes) - 1, parseInt(dia), parseInt(hora), parseInt(min));
+      const dia  = parseInt(matchConAnio[1]);
+      const mes  = parseInt(matchConAnio[2]);
+      const anio = parseInt(matchConAnio[3]);
+      const hora = parseInt(matchConAnio[4]);
+      const min  = parseInt(matchConAnio[5]);
+      return new Date(2000 + anio, mes - 1, dia, hora, min);
     }
-    // Formato antiguo sin año: "Sáb 16/05 12:00 (CL)" → asume 2026
-    const match = str.match(/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
-    if (!match) return null;
-    const [__, dia, mes, hora, min] = match;
-    return new Date(2026, parseInt(mes) - 1, parseInt(dia), parseInt(hora), parseInt(min));
+    // Formato sin año: "Sáb 16/05 12:00 (CL)" — buscar dd/MM HH:mm (sin tercera barra)
+    const matchSinAnio = str.match(/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
+    if (matchSinAnio) {
+      const dia  = parseInt(matchSinAnio[1]);
+      const mes  = parseInt(matchSinAnio[2]);
+      const hora = parseInt(matchSinAnio[3]);
+      const min  = parseInt(matchSinAnio[4]);
+      return new Date(2026, mes - 1, dia, hora, min);
+    }
+    return null;
   } catch(e) { return null; }
 }
 
@@ -944,11 +953,10 @@ function setFechaAtajo(dias, el) {
   document.querySelectorAll('#tab-analytics .filter-btn').forEach(b => b.classList.remove('active'));
   if (el) el.classList.add('active');
 
-  // Usar hora Chile explícitamente (no toISOString que convierte a UTC)
-  const ahoraChile = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
+  const hoy = new Date();
   const fmtChile = d => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const y  = d.getFullYear();
+    const m  = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${dd}`;
   };
@@ -956,30 +964,30 @@ function setFechaAtajo(dias, el) {
   const hasta  = document.getElementById('analytics-hasta');
 
   const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-  const fmtMes = d => {
-    const parts = d.split('-');
+  const fmtMes = str => {
+    const parts = str.split('-');
     return `${parts[2]}-${meses[parseInt(parts[1])-1]}`;
   };
+
+  const hoyStr = fmtChile(hoy);
 
   if (dias === -1) {
     desde.value = '';
     hasta.value  = '';
     document.getElementById('analytics-periodo').textContent = '';
   } else if (dias === 0) {
-    const hoy = fmtChile(ahoraChile);
-    desde.value = hoy;
-    hasta.value  = hoy;
-    document.getElementById('analytics-periodo').textContent = fmtMes(hoy);
+    desde.value = hoyStr;
+    hasta.value  = hoyStr;
+    document.getElementById('analytics-periodo').textContent = fmtMes(hoyStr);
   } else if (dias === 1) {
-    const ayer = new Date(ahoraChile); ayer.setDate(ayer.getDate() - 1);
+    const ayer = new Date(hoy); ayer.setDate(hoy.getDate() - 1);
     const ayerStr = fmtChile(ayer);
     desde.value = ayerStr;
     hasta.value  = ayerStr;
     document.getElementById('analytics-periodo').textContent = fmtMes(ayerStr);
   } else {
-    const d = new Date(ahoraChile); d.setDate(d.getDate() - dias);
-    const dStr   = fmtChile(d);
-    const hoyStr = fmtChile(ahoraChile);
+    const d = new Date(hoy); d.setDate(hoy.getDate() - dias);
+    const dStr = fmtChile(d);
     desde.value = dStr;
     hasta.value  = hoyStr;
     document.getElementById('analytics-periodo').textContent = `${fmtMes(dStr)} → ${fmtMes(hoyStr)}`;
