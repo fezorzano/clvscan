@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v29/05 21:40</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v29/05 21:52</div>
     </div>
   </div>
 
@@ -1040,14 +1040,6 @@ function renderAnalytics() {
   actualizarPLSummary(null);
 }
 
-function parsearFechaEventoChile(str) {
-  try {
-    const match = str.match(/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/);
-    if (!match) return null;
-    const [_, dia, mes, hora, min] = match;
-    return new Date(2026, parseInt(mes) - 1, parseInt(dia), parseInt(hora), parseInt(min));
-  } catch(e) { return null; }
-}
 
 function destroyChart(id) {
   if (charts[id]) { charts[id].destroy(); delete charts[id]; }
