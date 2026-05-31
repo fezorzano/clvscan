@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v31/05 18:38</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v31/05 18:44</div>
     </div>
   </div>
 
@@ -847,6 +847,7 @@
 <!-- Chart.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
 <script>
 // Registrar plugin datalabels pero desactivarlo globalmente — solo waterfall lo usa
 Chart.register(ChartDataLabels);
@@ -1514,7 +1515,27 @@ function renderEventos7d() {
       responsive: true,
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: ctx => `${ctx.raw} eventos` } }
+        tooltip: { callbacks: { label: ctx => `${ctx.raw} eventos` } },
+        annotation: {
+          annotations: {
+            meta: {
+              type: 'line',
+              yMin: 25, yMax: 25,
+              borderColor: 'rgba(0,255,135,0.5)',
+              borderWidth: 1.5,
+              borderDash: [6, 4],
+              label: {
+                display: true,
+                content: 'Meta: 25',
+                position: 'end',
+                color: 'rgba(0,255,135,0.7)',
+                font: { size: 9, family: 'monospace' },
+                backgroundColor: 'transparent',
+                padding: 2,
+              }
+            }
+          }
+        }
       },
       scales: {
         x: { ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 14 }, grid: { display: false } },
@@ -1678,7 +1699,7 @@ async function simularEscaneo() {
       actualizarStats(nuevas);
       renderAumentarStake(aumentar);
       const msgOmitidas = omitidas > 0 ? ` · ${omitidas} ya apostada(s)` : '';
-      const tsEscaneo   = resp.tsEscaneo ? `Escaneo: ${resp.tsEscaneo}` : `Actualizado: ${new Date().toLocaleTimeString('es-CL', {hour:'2-digit',minute:'2-digit'})}`;
+      const tsEscaneo   = resp.tsEscaneo ? `Escaneo: ${resp.tsEscaneo}` : 'Escaneo: hora desconocida';
       document.getElementById('updateTime').textContent =
         `${tsEscaneo} · ${oportunidadesActuales.length} mercados con valor${msgOmitidas}`;
       mostrarToast(`✅ ${oportunidadesActuales.length} oportunidades cargadas${omitidas > 0 ? ` (${omitidas} omitidas)` : ''}`);
@@ -1687,7 +1708,7 @@ async function simularEscaneo() {
       renderOportunidades([]);
       actualizarStats([]);
       document.getElementById('updateTime').textContent =
-        `Actualizado: ${new Date().toLocaleTimeString('es-CL', {hour:'2-digit',minute:'2-digit'})} · Sin oportunidades en este momento`;
+        `${resp.tsEscaneo ? `Escaneo: ${resp.tsEscaneo}` : 'Escaneo: hora desconocida'} · Sin oportunidades en este momento`;
       mostrarToast('Sin oportunidades en este momento');
     } else {
       oportunidadesActuales = [];
