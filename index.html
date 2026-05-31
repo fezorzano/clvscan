@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v31/05 13:37</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v31/05 18:38</div>
     </div>
   </div>
 
@@ -804,38 +804,38 @@
       <canvas id="chart-waterfall" height="160"></canvas>
     </div>
 
-    <!-- 1. Curva P&L acumulado -->
+    <!-- 1. Eventos por día (ventana móvil 7 días + 7 próximos) -->
+    <div class="section-title">Eventos — Ventana 7 días</div>
+    <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <canvas id="chart-eventos-7d" height="200"></canvas>
+    </div>
+
+    <!-- 2. Curva P&L acumulado -->
     <div class="section-title">Curva P&L Acumulado</div>
     <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
       <canvas id="chart-pl" height="200"></canvas>
     </div>
 
-    <!-- 2. P&L por rango de OLV -->
+    <!-- 3. P&L por rango de OLV -->
     <div class="section-title">P&L por Rango OLV</div>
     <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
       <canvas id="chart-olv" height="200"></canvas>
     </div>
 
-    <!-- 3. P&L por rango de cuota -->
+    <!-- 4. P&L por rango de cuota -->
     <div class="section-title">P&L por Rango de Cuota</div>
     <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
       <canvas id="chart-cuota" height="200"></canvas>
     </div>
 
-    <!-- 4. Tabla por liga -->
+    <!-- 5. Tabla por liga -->
     <div class="section-title">Resumen por Liga</div>
     <div id="tabla-liga" style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;overflow-x:auto;"></div>
 
-    <!-- 5. Progresión OLV promedio -->
+    <!-- 6. Progresión OLV promedio -->
     <div class="section-title">Progresión OLV Promedio</div>
     <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
       <canvas id="chart-olv-prog" height="200"></canvas>
-    </div>
-
-    <!-- 6. Eventos por día (ventana móvil 7 días) -->
-    <div class="section-title">Eventos — Ventana 7 días</div>
-    <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
-      <canvas id="chart-eventos-7d" height="200"></canvas>
     </div>
 
   </div>
@@ -1422,41 +1422,14 @@ function renderProgresiónOLV(datos) {
   });
 }
 
-// 6. Eventos — ventana móvil 7 días
+// 6. Eventos — ventana móvil 7 días + 7 próximos
 function renderEventos7d() {
   destroyChart('eventos-7d');
 
-  // Usar todas las apuestas (pendientes + resueltas), filtradas por período
   const desde = document.getElementById('analytics-desde')?.value;
   const hasta  = document.getElementById('analytics-hasta')?.value;
 
-  let base = [...apuestas];
-  if (desde) {
-    const [dy, dm, dd] = desde.split('-').map(Number);
-    const desdeDate = new Date(dy, dm - 1, dd, 0, 0, 0);
-    base = base.filter(a => {
-      const f = parsearFechaEventoChile(a.fechaEvento);
-      return f && f >= desdeDate;
-    });
-  }
-  if (hasta) {
-    const [hy, hm, hd] = hasta.split('-').map(Number);
-    const hastaDate = new Date(hy, hm - 1, hd, 23, 59, 59);
-    base = base.filter(a => {
-      const f = parsearFechaEventoChile(a.fechaEvento);
-      return f && f <= hastaDate;
-    });
-  }
-
-  if (base.length === 0) return;
-
-  // Obtener fechas únicas del período (por día)
-  const fmtDia = f => {
-    const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-    return `${String(f.getDate()).padStart(2,'0')}-${meses[f.getMonth()]}`;
-  };
-
-  // Mapear cada apuesta a su fecha de evento (solo día)
+  // Mapear TODAS las apuestas a su día (para la ventana móvil)
   const porDia = {};
   apuestas.forEach(a => {
     const f = parsearFechaEventoChile(a.fechaEvento);
@@ -1466,28 +1439,62 @@ function renderEventos7d() {
     porDia[key].add(`${a.evento}|${a.fechaEvento}`);
   });
 
-  // Obtener días únicos del período filtrado
-  const diasDelPeriodo = [...new Set(base.map(a => {
+  // Días del período filtrado (pasados/presentes)
+  let base = [...apuestas];
+  if (desde) {
+    const [dy, dm, dd] = desde.split('-').map(Number);
+    const desdeDate = new Date(dy, dm - 1, dd, 0, 0, 0);
+    base = base.filter(a => { const f = parsearFechaEventoChile(a.fechaEvento); return f && f >= desdeDate; });
+  }
+  if (hasta) {
+    const [hy, hm, hd] = hasta.split('-').map(Number);
+    const hastaDate = new Date(hy, hm - 1, hd, 23, 59, 59);
+    base = base.filter(a => { const f = parsearFechaEventoChile(a.fechaEvento); return f && f <= hastaDate; });
+  }
+
+  const diasPasados = [...new Set(base.map(a => {
     const f = parsearFechaEventoChile(a.fechaEvento);
     if (!f) return null;
     return `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,'0')}-${String(f.getDate()).padStart(2,'0')}`;
   }).filter(Boolean))].sort();
 
-  // Para cada día del período, sumar eventos únicos en ventana de 7 días (ese día + 6 anteriores)
-  const labels = [];
-  const valores = [];
+  // 7 días futuros desde hoy (independiente del filtro)
+  const ahoraChile = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
+  const diasFuturos = [];
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(ahoraChile);
+    d.setDate(d.getDate() + i);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    diasFuturos.push(key);
+  }
 
-  diasDelPeriodo.forEach(diaStr => {
-    const diaDate = new Date(diaStr);
+  const todosDias = [...new Set([...diasPasados, ...diasFuturos])].sort();
+  if (todosDias.length === 0) return;
+
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const fmtDia = str => {
+    const [y, m, d] = str.split('-').map(Number);
+    return `${String(d).padStart(2,'0')}-${meses[m-1]}`;
+  };
+  const hoyStr = `${ahoraChile.getFullYear()}-${String(ahoraChile.getMonth()+1).padStart(2,'0')}-${String(ahoraChile.getDate()).padStart(2,'0')}`;
+
+  const labels  = [];
+  const valores = [];
+  const colores = [];
+
+  todosDias.forEach(diaStr => {
+    const [y, m, d] = diaStr.split('-').map(Number);
+    const diaDate = new Date(y, m - 1, d);
     let eventosVentana = new Set();
     for (let i = 0; i < 7; i++) {
-      const d = new Date(diaDate);
-      d.setDate(d.getDate() - i);
-      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const dd = new Date(diaDate); dd.setDate(dd.getDate() - i);
+      const key = `${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`;
       if (porDia[key]) porDia[key].forEach(e => eventosVentana.add(e));
     }
-    labels.push(fmtDia(diaDate));
+    labels.push(fmtDia(diaStr));
     valores.push(eventosVentana.size);
+    // Azul para pasados, naranja para futuros
+    colores.push(diaStr > hoyStr ? 'rgba(245,158,11,0.6)' : 'rgba(77,166,255,0.6)');
   });
 
   const ctx = document.getElementById('chart-eventos-7d').getContext('2d');
@@ -1496,10 +1503,9 @@ function renderEventos7d() {
     data: {
       labels,
       datasets: [{
-        label: 'Eventos (ventana 7d)',
         data: valores,
-        backgroundColor: 'rgba(77,166,255,0.6)',
-        borderColor: '#4da6ff',
+        backgroundColor: colores,
+        borderColor: colores.map(c => c.replace('0.6', '1')),
         borderWidth: 1,
         borderRadius: 3,
       }]
@@ -1511,7 +1517,7 @@ function renderEventos7d() {
         tooltip: { callbacks: { label: ctx => `${ctx.raw} eventos` } }
       },
       scales: {
-        x: { ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 12 }, grid: { display: false } },
+        x: { ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 14 }, grid: { display: false } },
         y: { ticks: { color: '#64748b', font: { size: 9 }, stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
       }
     }
