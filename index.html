@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v31/05 12:28</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v31/05 13:37</div>
     </div>
   </div>
 
@@ -712,66 +712,84 @@
 
     <!-- P&L Summary -->
     <!-- Fila 1: filtrada — azul -->
-    <div class="pl-summary" style="grid-template-columns:1.25fr 1fr 1fr;margin-bottom:10px;">
+    <div style="display:flex;gap:0;margin-bottom:10px;align-items:stretch;">
+      <div style="width:14px;flex-shrink:0;margin-right:4px;"></div>
+      <div class="pl-summary" style="grid-template-columns:1.2fr 1fr 1fr;flex:1;margin-bottom:0;">
       <div class="pl-card" style="min-width:0;overflow:hidden;">
         <div class="pl-val" id="pl-saldo" style="color:var(--blue);font-size:clamp(13px,4vw,20px);">$400.000</div>
-        <div class="stat-label">Saldo Coolbet</div>
+        <div class="stat-label">Coolbet</div>
       </div>
       <div class="pl-card" style="min-width:0;overflow:hidden;">
         <div class="pl-val" id="pl-volumen" style="color:var(--blue);font-size:clamp(13px,4vw,20px);">$0</div>
-        <div class="stat-label">Total Apostado</div>
+        <div class="stat-label">Apostado</div>
       </div>
       <div class="pl-card" style="min-width:0;overflow:hidden;">
         <div class="pl-val" id="pl-pct-bankroll" style="color:var(--blue);font-size:clamp(13px,4vw,20px);">0</div>
-        <div class="stat-label">Eventos resueltos</div>
+        <div class="stat-label">Eventos</div>
+      </div>
       </div>
     </div>
 
     <!-- Fila 2: real — filtrada -->
-    <div class="pl-summary" style="grid-template-columns:1.25fr 1fr 1fr;margin-bottom:10px;">
-      <div class="pl-card" style="min-width:0;overflow:hidden;">
-        <div class="pl-val" id="pl-total" style="color:var(--blue);font-size:clamp(13px,4vw,20px);">$0</div>
-        <div class="stat-label">P&L Real</div>
+    <div style="display:flex;gap:0;margin-bottom:10px;align-items:stretch;">
+      <div style="display:flex;align-items:center;justify-content:center;width:14px;flex-shrink:0;margin-right:4px;">
+        <span style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue);font-family:var(--font-mono);white-space:nowrap;">Real</span>
       </div>
-      <div class="pl-card" style="min-width:0;overflow:hidden;">
-        <div class="pl-val" id="pl-yield" style="color:var(--blue);font-size:clamp(13px,4vw,20px);">0,0%</div>
-        <div class="stat-label">Yield</div>
-      </div>
-      <div class="pl-card" style="min-width:0;overflow:hidden;">
-        <div class="pl-val" id="pl-rentab-real" style="color:var(--blue);font-size:clamp(13px,4vw,20px);">0,0%</div>
-        <div class="stat-label">Rentab. Real</div>
+      <div class="pl-summary" style="grid-template-columns:1.2fr 1fr 1fr;flex:1;margin-bottom:0;">
+        <div class="pl-card" style="min-width:0;overflow:hidden;">
+          <div class="pl-val" id="pl-total" style="color:var(--blue);font-size:clamp(13px,4vw,20px);">$0</div>
+          <div class="stat-label">P&L</div>
+        </div>
+        <div class="pl-card" style="min-width:0;overflow:hidden;">
+          <div class="pl-val" id="pl-yield" style="color:var(--blue);font-size:clamp(13px,4vw,20px);">0,0%</div>
+          <div class="stat-label">Yield</div>
+        </div>
+        <div class="pl-card" style="min-width:0;overflow:hidden;">
+          <div class="pl-val" id="pl-rentab-real" style="color:var(--blue);font-size:clamp(13px,4vw,20px);">0,0%</div>
+          <div class="stat-label">Rentab.</div>
+        </div>
       </div>
     </div>
 
     <!-- Fila 3: teórico — filtrada -->
-    <div class="pl-summary" style="grid-template-columns:1.25fr 1fr 1fr;margin-bottom:10px;">
-      <div class="pl-card" style="min-width:0;overflow:hidden;">
-        <div class="pl-val" id="pl-teorico" style="color:#94a3b8;font-size:clamp(13px,4vw,20px);">+$0</div>
-        <div class="stat-label">P&L Teórico</div>
+    <div style="display:flex;gap:0;margin-bottom:10px;align-items:stretch;">
+      <div style="display:flex;align-items:center;justify-content:center;width:14px;flex-shrink:0;margin-right:4px;">
+        <span style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;font-family:var(--font-mono);white-space:nowrap;">Teórico</span>
       </div>
-      <div class="pl-card" style="min-width:0;overflow:hidden;">
-        <div class="pl-val" id="pl-clv-prom" style="color:#94a3b8;font-size:clamp(13px,4vw,20px);">0,0%</div>
-        <div class="stat-label">OLV</div>
-      </div>
-      <div class="pl-card" style="min-width:0;overflow:hidden;">
-        <div class="pl-val" id="pl-rentab-teorica" style="color:#94a3b8;font-size:clamp(13px,4vw,20px);">0,0%</div>
-        <div class="stat-label">Rentab. Teór.</div>
+      <div class="pl-summary" style="grid-template-columns:1.2fr 1fr 1fr;flex:1;margin-bottom:0;">
+        <div class="pl-card" style="min-width:0;overflow:hidden;">
+          <div class="pl-val" id="pl-teorico" style="color:#94a3b8;font-size:clamp(13px,4vw,20px);">+$0</div>
+          <div class="stat-label">P&L</div>
+        </div>
+        <div class="pl-card" style="min-width:0;overflow:hidden;">
+          <div class="pl-val" id="pl-clv-prom" style="color:#94a3b8;font-size:clamp(13px,4vw,20px);">0,0%</div>
+          <div class="stat-label">OLV</div>
+        </div>
+        <div class="pl-card" style="min-width:0;overflow:hidden;">
+          <div class="pl-val" id="pl-rentab-teorica" style="color:#94a3b8;font-size:clamp(13px,4vw,20px);">0,0%</div>
+          <div class="stat-label">Rentab.</div>
+        </div>
       </div>
     </div>
 
     <!-- Fila 4: en juego — naranja -->
-    <div class="pl-summary" style="grid-template-columns:1.25fr 1fr 1fr;margin-bottom:16px;">
-      <div class="pl-card" style="min-width:0;overflow:hidden;">
-        <div class="pl-val" id="pl-pendiente-stake" style="color:#f59e0b;font-size:clamp(13px,4vw,20px);">$0</div>
-        <div class="stat-label" style="color:#f59e0b;">En Juego</div>
+    <div style="display:flex;gap:0;margin-bottom:16px;align-items:stretch;">
+      <div style="display:flex;align-items:center;justify-content:center;width:14px;flex-shrink:0;margin-right:4px;">
+        <span style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:#f59e0b;font-family:var(--font-mono);white-space:nowrap;">En juego</span>
       </div>
-      <div class="pl-card" style="min-width:0;overflow:hidden;">
-        <div class="pl-val" id="pl-olv-juego" style="color:#f59e0b;font-size:clamp(13px,4vw,20px);">0,0%</div>
-        <div class="stat-label" style="color:#f59e0b;">OLV en juego</div>
-      </div>
-      <div class="pl-card" style="min-width:0;overflow:hidden;">
-        <div class="pl-val" id="pl-eventos-juego" style="color:#f59e0b;font-size:clamp(13px,4vw,20px);">0</div>
-        <div class="stat-label" style="color:#f59e0b;">Eventos en juego</div>
+      <div class="pl-summary" style="grid-template-columns:1.2fr 1fr 1fr;flex:1;margin-bottom:0;">
+        <div class="pl-card" style="min-width:0;overflow:hidden;">
+          <div class="pl-val" id="pl-pendiente-stake" style="color:#f59e0b;font-size:clamp(13px,4vw,20px);">$0</div>
+          <div class="stat-label" style="color:#f59e0b;">Saldo</div>
+        </div>
+        <div class="pl-card" style="min-width:0;overflow:hidden;">
+          <div class="pl-val" id="pl-olv-juego" style="color:#f59e0b;font-size:clamp(13px,4vw,20px);">0,0%</div>
+          <div class="stat-label" style="color:#f59e0b;">OLV</div>
+        </div>
+        <div class="pl-card" style="min-width:0;overflow:hidden;">
+          <div class="pl-val" id="pl-eventos-juego" style="color:#f59e0b;font-size:clamp(13px,4vw,20px);">0</div>
+          <div class="stat-label" style="color:#f59e0b;">Eventos</div>
+        </div>
       </div>
     </div>
 
@@ -812,6 +830,12 @@
     <div class="section-title">Progresión OLV Promedio</div>
     <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
       <canvas id="chart-olv-prog" height="200"></canvas>
+    </div>
+
+    <!-- 6. Eventos por día (ventana móvil 7 días) -->
+    <div class="section-title">Eventos — Ventana 7 días</div>
+    <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <canvas id="chart-eventos-7d" height="200"></canvas>
     </div>
 
   </div>
@@ -1045,6 +1069,7 @@ function renderAnalytics() {
   renderBarrasCuota(datos);
   renderTablaLiga(datos);
   renderProgresiónOLV(datos);
+  renderEventos7d();
   // Actualizar cuadrantes filtrados del summary
   actualizarPLSummary(null);
 }
@@ -1394,6 +1419,102 @@ function renderProgresiónOLV(datos) {
       ]
     },
     options: { ...chartOpts('%'), plugins: { ...chartOpts('%').plugins, legend: { display: false } } }
+  });
+}
+
+// 6. Eventos — ventana móvil 7 días
+function renderEventos7d() {
+  destroyChart('eventos-7d');
+
+  // Usar todas las apuestas (pendientes + resueltas), filtradas por período
+  const desde = document.getElementById('analytics-desde')?.value;
+  const hasta  = document.getElementById('analytics-hasta')?.value;
+
+  let base = [...apuestas];
+  if (desde) {
+    const [dy, dm, dd] = desde.split('-').map(Number);
+    const desdeDate = new Date(dy, dm - 1, dd, 0, 0, 0);
+    base = base.filter(a => {
+      const f = parsearFechaEventoChile(a.fechaEvento);
+      return f && f >= desdeDate;
+    });
+  }
+  if (hasta) {
+    const [hy, hm, hd] = hasta.split('-').map(Number);
+    const hastaDate = new Date(hy, hm - 1, hd, 23, 59, 59);
+    base = base.filter(a => {
+      const f = parsearFechaEventoChile(a.fechaEvento);
+      return f && f <= hastaDate;
+    });
+  }
+
+  if (base.length === 0) return;
+
+  // Obtener fechas únicas del período (por día)
+  const fmtDia = f => {
+    const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    return `${String(f.getDate()).padStart(2,'0')}-${meses[f.getMonth()]}`;
+  };
+
+  // Mapear cada apuesta a su fecha de evento (solo día)
+  const porDia = {};
+  apuestas.forEach(a => {
+    const f = parsearFechaEventoChile(a.fechaEvento);
+    if (!f) return;
+    const key = `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,'0')}-${String(f.getDate()).padStart(2,'0')}`;
+    if (!porDia[key]) porDia[key] = new Set();
+    porDia[key].add(`${a.evento}|${a.fechaEvento}`);
+  });
+
+  // Obtener días únicos del período filtrado
+  const diasDelPeriodo = [...new Set(base.map(a => {
+    const f = parsearFechaEventoChile(a.fechaEvento);
+    if (!f) return null;
+    return `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,'0')}-${String(f.getDate()).padStart(2,'0')}`;
+  }).filter(Boolean))].sort();
+
+  // Para cada día del período, sumar eventos únicos en ventana de 7 días (ese día + 6 anteriores)
+  const labels = [];
+  const valores = [];
+
+  diasDelPeriodo.forEach(diaStr => {
+    const diaDate = new Date(diaStr);
+    let eventosVentana = new Set();
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(diaDate);
+      d.setDate(d.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      if (porDia[key]) porDia[key].forEach(e => eventosVentana.add(e));
+    }
+    labels.push(fmtDia(diaDate));
+    valores.push(eventosVentana.size);
+  });
+
+  const ctx = document.getElementById('chart-eventos-7d').getContext('2d');
+  charts['eventos-7d'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Eventos (ventana 7d)',
+        data: valores,
+        backgroundColor: 'rgba(77,166,255,0.6)',
+        borderColor: '#4da6ff',
+        borderWidth: 1,
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `${ctx.raw} eventos` } }
+      },
+      scales: {
+        x: { ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 12 }, grid: { display: false } },
+        y: { ticks: { color: '#64748b', font: { size: 9 }, stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+      }
+    }
   });
 }
 
