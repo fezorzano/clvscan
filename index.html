@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v30/05 13:21</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v31/05 12:23</div>
     </div>
   </div>
 
@@ -610,7 +610,8 @@
       <div class="empty-state">
         <div class="empty-icon">📡</div>
         <div class="empty-text">
-          El scanner escanea automáticamente<br>a las 07:00, 13:00 y 19:00 hora Chile.<br><br>
+          El scanner escanea automáticamente.<br>
+          <span id="proximo-escaneo">Calculando próximo escaneo...</span><br><br>
           Aquí verás las oportunidades<br>con OLV positivo detectadas.
         </div>
       </div>
@@ -711,7 +712,7 @@
 
     <!-- P&L Summary -->
     <!-- Fila 1: filtrada — azul -->
-    <div class="pl-summary" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:10px;">
+    <div class="pl-summary" style="grid-template-columns:2fr 1fr 1fr;margin-bottom:10px;">
       <div class="pl-card" style="min-width:0;overflow:hidden;">
         <div class="pl-val" id="pl-saldo" style="color:var(--blue);font-size:clamp(13px,4vw,20px);">$400.000</div>
         <div class="stat-label">Saldo Coolbet</div>
@@ -726,24 +727,8 @@
       </div>
     </div>
 
-    <!-- Fila 2: en juego — naranja -->
-    <div class="pl-summary" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:10px;">
-      <div class="pl-card" style="min-width:0;overflow:hidden;">
-        <div class="pl-val" id="pl-pendiente-stake" style="color:#f59e0b;font-size:clamp(13px,4vw,20px);">$0</div>
-        <div class="stat-label" style="color:#f59e0b;">En Juego</div>
-      </div>
-      <div class="pl-card" style="min-width:0;overflow:hidden;">
-        <div class="pl-val" id="pl-olv-juego" style="color:#f59e0b;font-size:clamp(13px,4vw,20px);">0,0%</div>
-        <div class="stat-label" style="color:#f59e0b;">OLV en juego</div>
-      </div>
-      <div class="pl-card" style="min-width:0;overflow:hidden;">
-        <div class="pl-val" id="pl-eventos-juego" style="color:#f59e0b;font-size:clamp(13px,4vw,20px);">0</div>
-        <div class="stat-label" style="color:#f59e0b;">Eventos en juego</div>
-      </div>
-    </div>
-
-    <!-- Fila 3: real — filtrada -->
-    <div class="pl-summary" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:10px;">
+    <!-- Fila 2: real — filtrada -->
+    <div class="pl-summary" style="grid-template-columns:2fr 1fr 1fr;margin-bottom:10px;">
       <div class="pl-card" style="min-width:0;overflow:hidden;">
         <div class="pl-val" id="pl-total" style="color:var(--blue);font-size:clamp(13px,4vw,20px);">$0</div>
         <div class="stat-label">P&L Real</div>
@@ -758,8 +743,8 @@
       </div>
     </div>
 
-    <!-- Fila 4: teórico — filtrada -->
-    <div class="pl-summary" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:16px;">
+    <!-- Fila 3: teórico — filtrada -->
+    <div class="pl-summary" style="grid-template-columns:2fr 1fr 1fr;margin-bottom:10px;">
       <div class="pl-card" style="min-width:0;overflow:hidden;">
         <div class="pl-val" id="pl-teorico" style="color:#94a3b8;font-size:clamp(13px,4vw,20px);">+$0</div>
         <div class="stat-label">P&L Teórico</div>
@@ -771,6 +756,22 @@
       <div class="pl-card" style="min-width:0;overflow:hidden;">
         <div class="pl-val" id="pl-rentab-teorica" style="color:#94a3b8;font-size:clamp(13px,4vw,20px);">0,0%</div>
         <div class="stat-label">Rentab. Teór.</div>
+      </div>
+    </div>
+
+    <!-- Fila 4: en juego — naranja -->
+    <div class="pl-summary" style="grid-template-columns:2fr 1fr 1fr;margin-bottom:16px;">
+      <div class="pl-card" style="min-width:0;overflow:hidden;">
+        <div class="pl-val" id="pl-pendiente-stake" style="color:#f59e0b;font-size:clamp(13px,4vw,20px);">$0</div>
+        <div class="stat-label" style="color:#f59e0b;">En Juego</div>
+      </div>
+      <div class="pl-card" style="min-width:0;overflow:hidden;">
+        <div class="pl-val" id="pl-olv-juego" style="color:#f59e0b;font-size:clamp(13px,4vw,20px);">0,0%</div>
+        <div class="stat-label" style="color:#f59e0b;">OLV en juego</div>
+      </div>
+      <div class="pl-card" style="min-width:0;overflow:hidden;">
+        <div class="pl-val" id="pl-eventos-juego" style="color:#f59e0b;font-size:clamp(13px,4vw,20px);">0</div>
+        <div class="stat-label" style="color:#f59e0b;">Eventos en juego</div>
       </div>
     </div>
 
@@ -1444,6 +1445,48 @@ async function dispararEscaneoReal() {
   }
 }
 
+// ==================== PRÓXIMO ESCANEO ====================
+function calcularProximoEscaneo() {
+  const ahora      = new Date();
+  const ahoraChile = new Date(ahora.toLocaleString('en-US', { timeZone: 'America/Santiago' }));
+  const dia        = ahoraChile.getDay(); // 0=Dom, 1=Lun, ..., 6=Sáb
+  const horaActual = ahoraChile.getHours() * 60 + ahoraChile.getMinutes();
+
+  const horariosPorDia = {
+    0: [7*60, 10*60, 13*60, 16*60, 19*60, 21*60+30], // Dom
+    1: [7*60, 13*60, 19*60],                           // Lun
+    2: [7*60, 13*60, 19*60],                           // Mar
+    3: [7*60, 13*60, 19*60],                           // Mié
+    4: [7*60, 13*60, 19*60],                           // Jue
+    5: [7*60, 13*60, 16*60, 19*60, 21*60+30],          // Vie
+    6: [7*60, 10*60, 13*60, 16*60, 19*60, 21*60+30],   // Sáb
+  };
+
+  const diasNombre = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const fmtHora = m => `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+
+  // Buscar próximo escaneo hoy
+  const horasHoy = horariosPorDia[dia];
+  const proximoHoy = horasHoy.find(h => h > horaActual);
+
+  if (proximoHoy !== undefined) {
+    return `Próximo escaneo: ${fmtHora(proximoHoy)}`;
+  }
+
+  // Si ya pasaron todos los de hoy, buscar el primero de mañana
+  const mañana      = (dia + 1) % 7;
+  const primeroMañana = horariosPorDia[mañana][0];
+  return `Próximo escaneo: mañana ${diasNombre[mañana] !== diasNombre[dia] ? '' : ''}${fmtHora(primeroMañana)} (${diasNombre[mañana]})`;
+}
+
+function actualizarProximoEscaneo() {
+  const texto = calcularProximoEscaneo();
+  const el1 = document.getElementById('proximo-escaneo');
+  const el2 = document.getElementById('proximo-escaneo-2');
+  if (el1) el1.textContent = texto;
+  if (el2) el2.textContent = texto;
+}
+
 // ==================== SCANNER ====================
 async function simularEscaneo() {
   const btn  = document.getElementById('scanBtn');
@@ -1573,7 +1616,7 @@ function renderOportunidades(ops, error = false) {
       : `<div class="empty-state">
           <div class="empty-icon">📡</div>
           <div class="empty-text">
-            Sin oportunidades en este momento.<br>Próximo escaneo automático a las 07:00, 13:00 o 19:00.
+            Sin oportunidades en este momento.<br><span id="proximo-escaneo-2"></span>
           </div>
         </div>`;
     return;
@@ -1813,6 +1856,7 @@ function fmtPct(n, decimals = 1) {
 
 // Carga inicial — Analytics es el tab por defecto
 window.addEventListener('load', () => {
+  actualizarProximoEscaneo();
   cargarTrackerDesdeSheets().then(() => renderAnalytics());
 });
 function calcularKelly() {
@@ -2124,7 +2168,10 @@ function actualizarPLSummary(resumen) {
 
   // Total Apostado filtrado
   const volEl = document.getElementById('pl-volumen');
-  if (volEl) volEl.textContent = '$' + volumenResuelto.toLocaleString('es-CL');
+  if (volEl) {
+    const miles = Math.round(volumenResuelto / 1000);
+    volEl.textContent = 'M$' + miles.toLocaleString('es-CL');
+  }
 
   // Eventos resueltos únicos filtrados (evento + fechaEvento)
   const eventosUnicos = new Set(cerradas.map(a => `${a.evento}|${a.fechaEvento}`)).size;
