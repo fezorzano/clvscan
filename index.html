@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v31/05 18:44</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 08:35</div>
     </div>
   </div>
 
@@ -1594,41 +1594,50 @@ async function dispararEscaneoReal() {
 }
 
 // ==================== PRÓXIMO ESCANEO ====================
-function calcularProximoEscaneo() {
-  const ahora      = new Date();
-  const ahoraChile = new Date(ahora.toLocaleString('en-US', { timeZone: 'America/Santiago' }));
-  const dia        = ahoraChile.getDay(); // 0=Dom, 1=Lun, ..., 6=Sáb
-  const horaActual = ahoraChile.getHours() * 60 + ahoraChile.getMinutes();
+const HORARIOS_POR_DIA = {
+  0: [7*60, 10*60, 13*60, 16*60, 19*60, 21*60+30], // Dom
+  1: [7*60, 13*60, 19*60],                           // Lun
+  2: [7*60, 13*60, 19*60],                           // Mar
+  3: [7*60, 13*60, 19*60],                           // Mié
+  4: [7*60, 13*60, 19*60],                           // Jue
+  5: [7*60, 13*60, 16*60, 19*60, 21*60+30],          // Vie
+  6: [7*60, 10*60, 13*60, 16*60, 19*60, 21*60+30],   // Sáb
+};
 
-  const horariosPorDia = {
-    0: [7*60, 10*60, 13*60, 16*60, 19*60, 21*60+30], // Dom
-    1: [7*60, 13*60, 19*60],                           // Lun
-    2: [7*60, 13*60, 19*60],                           // Mar
-    3: [7*60, 13*60, 19*60],                           // Mié
-    4: [7*60, 13*60, 19*60],                           // Jue
-    5: [7*60, 13*60, 16*60, 19*60, 21*60+30],          // Vie
-    6: [7*60, 10*60, 13*60, 16*60, 19*60, 21*60+30],   // Sáb
-  };
+let ultimoTsEscaneo = null; // se actualiza al cargar oportunidades
 
+function calcularProximoEscaneo(desdeTs) {
+  // desdeTs: string de fecha/hora del último escaneo real, o null → usa ahora
   const diasNombre = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
   const fmtHora = m => `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
 
-  // Buscar próximo escaneo hoy
-  const horasHoy = horariosPorDia[dia];
-  const proximoHoy = horasHoy.find(h => h > horaActual);
-
-  if (proximoHoy !== undefined) {
-    return `Próximo escaneo: ${fmtHora(proximoHoy)}`;
+  let base;
+  if (desdeTs) {
+    // Parsear timestamp del sheet: "DD/MM/YYYY HH:MM:SS" o "D/M/YYYY, HH:MM:SS"
+    try {
+      // Formato es-CL: "31/05/2026, 19:02:15"
+      const m = desdeTs.match(/(\d+)\/(\d+)\/(\d+).*?(\d+):(\d+)/);
+      if (m) base = new Date(m[3], parseInt(m[2])-1, parseInt(m[1]), parseInt(m[4]), parseInt(m[5]));
+    } catch(e) {}
+  }
+  if (!base || isNaN(base)) {
+    base = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
   }
 
-  // Si ya pasaron todos los de hoy, buscar el primero de mañana
-  const mañana      = (dia + 1) % 7;
-  const primeroMañana = horariosPorDia[mañana][0];
-  return `Próximo escaneo: mañana ${diasNombre[mañana] !== diasNombre[dia] ? '' : ''}${fmtHora(primeroMañana)} (${diasNombre[mañana]})`;
+  const dia       = base.getDay();
+  const minActual = base.getHours() * 60 + base.getMinutes();
+
+  // Buscar próximo escaneo después de base
+  const horasHoy   = HORARIOS_POR_DIA[dia];
+  const proximoHoy = horasHoy.find(h => h > minActual);
+  if (proximoHoy !== undefined) return `Próximo escaneo: ${fmtHora(proximoHoy)}`;
+
+  const mañana = (dia + 1) % 7;
+  return `Próximo escaneo: mañana ${fmtHora(HORARIOS_POR_DIA[mañana][0])} (${diasNombre[mañana]})`;
 }
 
-function actualizarProximoEscaneo() {
-  const texto = calcularProximoEscaneo();
+function actualizarProximoEscaneo(ts) {
+  const texto = calcularProximoEscaneo(ts || ultimoTsEscaneo);
   const el1 = document.getElementById('proximo-escaneo');
   const el2 = document.getElementById('proximo-escaneo-2');
   if (el1) el1.textContent = texto;
@@ -1699,9 +1708,11 @@ async function simularEscaneo() {
       actualizarStats(nuevas);
       renderAumentarStake(aumentar);
       const msgOmitidas = omitidas > 0 ? ` · ${omitidas} ya apostada(s)` : '';
+      ultimoTsEscaneo = resp.tsEscaneo || null;
       const tsEscaneo   = resp.tsEscaneo ? `Escaneo: ${resp.tsEscaneo}` : 'Escaneo: hora desconocida';
       document.getElementById('updateTime').textContent =
         `${tsEscaneo} · ${oportunidadesActuales.length} mercados con valor${msgOmitidas}`;
+      actualizarProximoEscaneo(resp.tsEscaneo);
       mostrarToast(`✅ ${oportunidadesActuales.length} oportunidades cargadas${omitidas > 0 ? ` (${omitidas} omitidas)` : ''}`);
     } else if (resp?.ok && resp.oportunidades?.length === 0) {
       oportunidadesActuales = [];
@@ -1971,6 +1982,10 @@ function renderKeys(e) {
     const pct       = Math.min(100, Math.round(k.remaining / 500 * 100));
     const meses     = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
     const resetDate = k.resetStr ? new Date(k.resetStr) : null;
+    const ahora     = new Date();
+    // Si ya pasó la fecha de reset, la key debería haberse reseteado — no mostrar como agotada
+    const yaReseteada = resetDate && ahora > resetDate;
+    if (yaReseteada && k.agotada) k = { ...k, agotada: false, remaining: 500, estado: 'ok' };
     const resetInfo = resetDate
       ? ` · reset ${String(resetDate.getDate()).padStart(2,'0')}-${meses[resetDate.getMonth()]}`
       : '';
@@ -2118,6 +2133,10 @@ function precargarApuesta_aumentar(idx) {
   document.getElementById('f-evento').dataset.deporte = o.deporte;
   document.getElementById('f-evento').dataset.fecha   = o.fecha;
   cambiarTab('tracker', document.querySelectorAll('.nav-tab')[2]);
+  setTimeout(() => {
+    const el = document.querySelector('#tab-tracker .section-title');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
   mostrarToast('✓ Datos cargados — confirma el stake adicional');
 }
 
@@ -2146,6 +2165,10 @@ function precargarApuesta(idx) {
   document.getElementById('f-evento').dataset.deporte = o.deporte;
   document.getElementById('f-evento').dataset.fecha   = o.fecha;
   cambiarTab('tracker', document.querySelectorAll('.nav-tab')[2]);
+  setTimeout(() => {
+    const el = document.querySelector('#tab-tracker .section-title');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
   mostrarToast('✓ Datos cargados — confirma y registra');
 }
 
