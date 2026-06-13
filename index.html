@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 11:36</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 13:46</div>
     </div>
   </div>
 
@@ -2060,10 +2060,11 @@ async function cargarMovimientos() {
 }
 
 // Carga inicial
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
   actualizarProximoEscaneo();
-  cargarMovimientos();
-  cargarTrackerDesdeSheets().then(() => renderAnalytics());
+  await cargarMovimientos();
+  await cargarTrackerDesdeSheets();
+  renderAnalytics();
 });
 function calcularKelly() {
   const coolbet  = parseFloat(document.getElementById('k-coolbet').value);
