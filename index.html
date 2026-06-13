@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 14:15</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 14:19</div>
     </div>
   </div>
 
@@ -2404,8 +2404,8 @@ function actualizarPLSummary(resumen) {
     saldoInicioPeriodo = netoMovAntes + antesDelPeriodo.reduce((s, a) => s + a.pl, 0);
   }
 
-  // Saldo Coolbet filtrado = saldo inicio período + P&L real del período - en juego
-  const saldoFiltrado = saldoInicioPeriodo + plReal - stakePendiente;
+  // Saldo Coolbet = saldo actual real (global, sin filtro)
+  const saldoFiltrado = saldoBase + plTotalGlobal - stakePendiente;
   const saldoEl = document.getElementById('pl-saldo');
   if (saldoEl) {
     saldoEl.textContent = '$' + Math.max(0, saldoFiltrado).toLocaleString('es-CL');
