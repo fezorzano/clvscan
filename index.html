@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 11:22</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 11:28</div>
     </div>
   </div>
 
@@ -1113,11 +1113,24 @@ function renderWaterfall(datosFiltrados) {
   // Dep/Ret neto del período filtrado
   let depRetNeto = 0;
   if (movimientos.length > 0) {
+    const meses = { ene:0, feb:1, mar:2, abr:3, may:4, jun:5, jul:6, ago:7, sep:8, oct:9, nov:10, dic:11 };
+    const parsearFechaMov = str => {
+      // Formato dd-mmm-yy, ej: "01-may-26"
+      const m = String(str).trim().match(/(\d{1,2})-([a-záéíóú]{3})-(\d{2})/i);
+      if (!m) return null;
+      return new Date(2000 + parseInt(m[3]), meses[m[2].toLowerCase()] ?? 0, parseInt(m[1]));
+    };
     const mov = movimientos.filter(m => {
-      if (!desde && !hasta) return true;
-      const f = new Date(m.fecha);
-      if (desde && f < new Date(desde)) return false;
-      if (hasta  && f > new Date(hasta + 'T23:59:59')) return false;
+      const f = parsearFechaMov(m.fecha);
+      if (!f) return false;
+      if (desde) {
+        const [dy, dm, dd] = desde.split('-').map(Number);
+        if (f < new Date(dy, dm - 1, dd)) return false;
+      }
+      if (hasta) {
+        const [hy, hm, hd] = hasta.split('-').map(Number);
+        if (f > new Date(hy, hm - 1, hd, 23, 59, 59)) return false;
+      }
       return true;
     });
     depRetNeto = mov.reduce((s, m) => m.tipo === 'Depósito' ? s + m.monto : s - m.monto, 0);
