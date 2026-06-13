@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 14:08</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 14:15</div>
     </div>
   </div>
 
@@ -2385,11 +2385,11 @@ function actualizarPLSummary(resumen) {
     : 0;
 
   // Saldo inicial del período = movimientos antes del período + P&L antes del período
-  let saldoInicioPeriodo = saldoBase;
+  let saldoInicioPeriodo = depositoInicial2; // sin filtro: siempre el depósito inicial
   if (desde) {
     const [dy, dm, dd] = desde.split('-').map(Number);
     const desdeDate = new Date(dy, dm - 1, dd, 0, 0, 0);
-    // Solo movimientos antes del período
+    // Todos los movimientos antes del período (incluyendo el inicial)
     const movAntesPeriodo = movimientos.filter(m => {
       const f = parsearFechaMov2(m.fecha);
       return f && f < desdeDate;
