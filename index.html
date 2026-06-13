@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 14:03</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 14:08</div>
     </div>
   </div>
 
@@ -2318,9 +2318,12 @@ function actualizarPLSummary(resumen) {
     if (!isNaN(d)) return d;
     return null;
   };
-  // Primer movimiento = depósito inicial fijo
+  // Primer movimiento = depósito inicial fijo; el resto afecta el saldo base
   const movOrdenados2 = [...movimientos].sort((a, b) => (parsearFechaMov2(a.fecha)||0) - (parsearFechaMov2(b.fecha)||0));
-  const saldoBase = movOrdenados2.length > 0 ? movOrdenados2[0].monto : SALDO_INICIAL;
+  const depositoInicial2 = movOrdenados2.length > 0 ? movOrdenados2[0].monto : SALDO_INICIAL;
+  const movPost2 = movOrdenados2.slice(1);
+  const netoPost2 = movPost2.reduce((s, m) => m.tipo === 'Depósito' ? s + m.monto : s - m.monto, 0);
+  const saldoBase = depositoInicial2 + netoPost2;
 
   // ── Filas 1 y 2: métricas independientes del filtro ─────────
   // Calculadas sobre TODAS las apuestas
