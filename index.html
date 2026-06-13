@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 13:58</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 14:03</div>
     </div>
   </div>
 
@@ -1141,7 +1141,12 @@ function renderWaterfall(datosFiltrados) {
       .reduce((s, a) => s + a.pl, 0);
   }
 
-  const saldoInicial = depositoInicial + plAntes;
+  const saldoInicial = depositoInicial + plAntes + movPosteriores.filter(m => {
+    const f = parsearFechaMov(m.fecha);
+    if (!f || !desde) return false;
+    const [dy, dm, dd] = desde.split('-').map(Number);
+    return f < new Date(dy, dm - 1, dd);
+  }).reduce((s, m) => m.tipo === 'Depósito' ? s + m.monto : s - m.monto, 0);
   const plPeriodo    = datosFiltrados.reduce((s, a) => s + a.pl, 0);
   const enJuego      = apuestas.filter(a => a.resultado === 'pendiente').reduce((s, a) => s + a.stake, 0);
   const saldoActual  = saldoInicial + plPeriodo + netoPeriodo - enJuego;
