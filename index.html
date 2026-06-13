@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 08:35</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 10:45</div>
     </div>
   </div>
 
@@ -886,7 +886,8 @@ const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxPQQA3bSzBoGvaQviB
 const sheetsConectado = true;
 
 // ==================== ESTADO ====================
-let apuestas = []; // siempre desde Sheets, nunca localStorage
+let apuestas    = []; // siempre desde Sheets, nunca localStorage
+let movimientos = []; // depósitos y retiros desde Sheets
 let filtroActual = 'todos';
 let oportunidadesAumentar = []; // se guarda globalmente para mostrar en tracker
 
@@ -1084,13 +1085,21 @@ function destroyChart(id) {
 function renderWaterfall(datosFiltrados) {
   destroyChart('waterfall');
 
-  const SALDO_INICIAL = 400000;
+  const SALDO_INICIAL = 400000; // fallback si no hay movimientos
+
+  // Saldo base desde movimientos (depósitos - retiros)
+  const saldoBase = movimientos.length > 0
+    ? movimientos.reduce((s, m) => m.tipo === 'Depósito' ? s + m.monto : s - m.monto, 0)
+    : SALDO_INICIAL;
 
   // Saldo inicial del período = $400k + P&L resuelto ANTES del período
   const desde = document.getElementById('analytics-desde')?.value;
   const todasCerradas = apuestas.filter(a => a.resultado !== 'pendiente');
 
-  let saldoInicio = SALDO_INICIAL;
+  const saldoBaseW = movimientos.length > 0
+    ? movimientos.reduce((s, m) => m.tipo === 'Depósito' ? s + m.monto : s - m.monto, 0)
+    : 400000;
+  let saldoInicio = saldoBaseW;
   if (desde) {
     const [dy, dm, dd] = desde.split('-').map(Number);
     const desdeDate = new Date(dy, dm - 1, dd, 0, 0, 0);
@@ -1098,7 +1107,7 @@ function renderWaterfall(datosFiltrados) {
       const f = parsearFechaEventoChile(a.fechaEvento);
       return f && f < desdeDate;
     });
-    saldoInicio = SALDO_INICIAL + antes.reduce((s, a) => s + a.pl, 0);
+    saldoInicio = saldoBaseW + antes.reduce((s, a) => s + a.pl, 0);
   }
 
   const plPeriodo   = datosFiltrados.reduce((s, a) => s + a.pl, 0);
@@ -2017,9 +2026,18 @@ function fmtPct(n, decimals = 1) {
   return n.toFixed(decimals).replace('.', ',');
 }
 
-// Carga inicial — Analytics es el tab por defecto
+async function cargarMovimientos() {
+  try {
+    const res  = await fetch(`${WEB_APP_URL}?accion=obtenerMovimientos`);
+    const resp = await res.json();
+    if (resp?.ok) movimientos = resp.movimientos || [];
+  } catch(e) { console.warn("Error cargando movimientos:", e.message); }
+}
+
+// Carga inicial
 window.addEventListener('load', () => {
   actualizarProximoEscaneo();
+  cargarMovimientos();
   cargarTrackerDesdeSheets().then(() => renderAnalytics());
 });
 function calcularKelly() {
@@ -2256,7 +2274,10 @@ function renderHistorial(resumen) {
 
 function actualizarPLSummary(resumen) {
   const BANKROLL_REFERENCIA = 1200000;
-  const SALDO_INICIAL       = 400000;
+  const SALDO_INICIAL = 400000; // fallback
+  const saldoBase = movimientos.length > 0
+    ? movimientos.reduce((s, m) => m.tipo === 'Depósito' ? s + m.monto : s - m.monto, 0)
+    : SALDO_INICIAL;
 
   // ── Filas 1 y 2: métricas independientes del filtro ─────────
   // Calculadas sobre TODAS las apuestas
@@ -2318,7 +2339,7 @@ function actualizarPLSummary(resumen) {
     : 0;
 
   // Saldo inicial del período = $400.000 + P&L de apuestas resueltas ANTES del período
-  let saldoInicioPeriodo = SALDO_INICIAL;
+  let saldoInicioPeriodo = saldoBase;
   if (desde) {
     const [dy, dm, dd] = desde.split('-').map(Number);
     const desdeDate = new Date(dy, dm - 1, dd, 0, 0, 0);
@@ -2326,7 +2347,7 @@ function actualizarPLSummary(resumen) {
       const f = parsearFechaEventoChile(a.fechaEvento);
       return f && f < desdeDate;
     });
-    saldoInicioPeriodo = SALDO_INICIAL + antesDelPeriodo.reduce((s, a) => s + a.pl, 0);
+    saldoInicioPeriodo = saldoBase + antesDelPeriodo.reduce((s, a) => s + a.pl, 0);
   }
 
   // Saldo Coolbet filtrado = saldo inicio período + P&L real del período - en juego
