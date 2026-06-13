@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 11:13</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 11:22</div>
     </div>
   </div>
 
@@ -1157,108 +1157,6 @@ function renderWaterfall(datosFiltrados) {
           [Math.min(saldoInicial, top2), Math.max(saldoInicial, top2)],
           [base3, top2],
           [Math.min(base4, saldoActual), Math.max(base4, saldoActual)],
-          [0, Math.max(0, saldoActual)],
-        ],
-        backgroundColor: barColors,
-        borderRadius: 4,
-        borderSkipped: false,
-        datalabels: {
-          display: true,
-          anchor: 'end',
-          align: 'end',
-          offset: 4,
-          clamp: true,
-          color: ctx => barColors[ctx.dataIndex],
-          font: { size: 9, family: 'monospace', weight: 'bold' },
-          formatter: (val) => {
-            const diff = val[1] - val[0];
-            const abs  = Math.abs(Math.round(diff));
-            return (diff < 0 ? '-$' : '$') + abs.toLocaleString('es-CL');
-          }
-        }
-      }]
-    },
-    options: {
-      responsive: true,
-      layout: { padding: { top: 20 } },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: ctx => {
-              const [base, top] = ctx.raw;
-              const val = Math.abs(Math.round(top - base));
-              return `${tooltipLabels[ctx.dataIndex]}: $${val.toLocaleString('es-CL')}`;
-            }
-          }
-        },
-        datalabels: { display: false },
-      },
-      scales: {
-        x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { display: false } },
-        y: {
-          ticks: { color: '#64748b', font: { size: 9 }, callback: v => `$${(v/1000).toFixed(0)}k` },
-          grid: { color: 'rgba(255,255,255,0.05)' },
-          min: Math.min(0, base3 - Math.abs(plPeriodo) * 0.1),
-        }
-      }
-    }
-  });
-}
-
-  // Saldo base neto para calcular inicio de período
-  const saldoBaseW = depositos - retiros;
-
-  const desde = document.getElementById('analytics-desde')?.value;
-  const todasCerradas = apuestas.filter(a => a.resultado !== 'pendiente');
-
-  let plAntes = 0;
-  if (desde) {
-    const [dy, dm, dd] = desde.split('-').map(Number);
-    const desdeDate = new Date(dy, dm - 1, dd, 0, 0, 0);
-    plAntes = todasCerradas
-      .filter(a => { const f = parsearFechaEventoChile(a.fechaEvento); return f && f < desdeDate; })
-      .reduce((s, a) => s + a.pl, 0);
-  }
-
-  const plPeriodo   = datosFiltrados.reduce((s, a) => s + a.pl, 0);
-  const enJuego     = apuestas.filter(a => a.resultado === 'pendiente').reduce((s, a) => s + a.stake, 0);
-  const saldoActual = saldoBaseW + plAntes + plPeriodo - enJuego;
-
-  // Barras flotantes [base, tope]:
-  // B1: Depósitos     [0, depositos]
-  // B2: P&L período   [depositos+plAntes, depositos+plAntes+plPeriodo]
-  // B3: En juego      [depositos+plAntes+plPeriodo-enJuego, depositos+plAntes+plPeriodo]
-  // B4: Retiros       [saldoActual, saldoActual+retiros]  (barra que resta)
-  // B5: Saldo actual  [0, saldoActual]
-
-  const base2 = depositos + plAntes;
-  const top2  = base2 + plPeriodo;
-  const base3 = top2 - enJuego;
-  const top3  = top2;
-  const base4 = saldoActual;
-  const top4  = saldoActual + retiros;
-
-  const barColors = [
-    '#60a5fa',
-    plPeriodo >= 0 ? '#4ade80' : '#f87171',
-    '#f59e0b',
-    '#f87171',
-    '#60a5fa',
-  ];
-  const tooltipLabels = ['Depósitos', 'P&L período', 'En juego', 'Retiros', 'Saldo actual'];
-
-  const ctx = document.getElementById('chart-waterfall').getContext('2d');
-  charts['waterfall'] = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: ['Depósitos', plPeriodo >= 0 ? 'P&L (+)' : 'P&L (−)', 'En juego', 'Retiros', 'Saldo actual'],
-      datasets: [{
-        data: [
-          [0, depositos],
-          [Math.min(base2, top2), Math.max(base2, top2)],
-          [base3, top3],
-          [base4, top4],
           [0, Math.max(0, saldoActual)],
         ],
         backgroundColor: barColors,
