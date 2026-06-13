@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 10:45</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 11:04</div>
     </div>
   </div>
 
@@ -1085,66 +1085,66 @@ function destroyChart(id) {
 function renderWaterfall(datosFiltrados) {
   destroyChart('waterfall');
 
-  const SALDO_INICIAL = 400000; // fallback si no hay movimientos
+  const FALLBACK = 400000;
+  const depositos = movimientos.filter(m => m.tipo === 'Depósito').reduce((s, m) => s + m.monto, 0) || FALLBACK;
+  const retiros   = movimientos.filter(m => m.tipo === 'Retiro').reduce((s, m) => s + m.monto, 0);
 
-  // Saldo base desde movimientos (depósitos - retiros)
-  const saldoBase = movimientos.length > 0
-    ? movimientos.reduce((s, m) => m.tipo === 'Depósito' ? s + m.monto : s - m.monto, 0)
-    : SALDO_INICIAL;
+  // Saldo base neto para calcular inicio de período
+  const saldoBaseW = depositos - retiros;
 
-  // Saldo inicial del período = $400k + P&L resuelto ANTES del período
   const desde = document.getElementById('analytics-desde')?.value;
   const todasCerradas = apuestas.filter(a => a.resultado !== 'pendiente');
 
-  const saldoBaseW = movimientos.length > 0
-    ? movimientos.reduce((s, m) => m.tipo === 'Depósito' ? s + m.monto : s - m.monto, 0)
-    : 400000;
-  let saldoInicio = saldoBaseW;
+  let plAntes = 0;
   if (desde) {
     const [dy, dm, dd] = desde.split('-').map(Number);
     const desdeDate = new Date(dy, dm - 1, dd, 0, 0, 0);
-    const antes = todasCerradas.filter(a => {
-      const f = parsearFechaEventoChile(a.fechaEvento);
-      return f && f < desdeDate;
-    });
-    saldoInicio = saldoBaseW + antes.reduce((s, a) => s + a.pl, 0);
+    plAntes = todasCerradas
+      .filter(a => { const f = parsearFechaEventoChile(a.fechaEvento); return f && f < desdeDate; })
+      .reduce((s, a) => s + a.pl, 0);
   }
 
   const plPeriodo   = datosFiltrados.reduce((s, a) => s + a.pl, 0);
   const enJuego     = apuestas.filter(a => a.resultado === 'pendiente').reduce((s, a) => s + a.stake, 0);
-  const saldoActual = saldoInicio + plPeriodo - enJuego;
+  const saldoActual = saldoBaseW + plAntes + plPeriodo - enJuego;
 
-  // Waterfall con barras flotantes [base, tope]
-  // Barra 1: Saldo inicial → [0, saldoInicio]
-  // Barra 2: P&L → [saldoInicio, saldoInicio + plPeriodo]
-  // Barra 3: En juego → [saldoInicio + plPeriodo - enJuego, saldoInicio + plPeriodo]
-  // Barra 4: Saldo actual → [0, saldoActual]
+  // Barras flotantes [base, tope]:
+  // B1: Depósitos     [0, depositos]
+  // B2: P&L período   [depositos+plAntes, depositos+plAntes+plPeriodo]
+  // B3: En juego      [depositos+plAntes+plPeriodo-enJuego, depositos+plAntes+plPeriodo]
+  // B4: Retiros       [saldoActual, saldoActual+retiros]  (barra que resta)
+  // B5: Saldo actual  [0, saldoActual]
 
-  const b2base = saldoInicio;
-  const b2top  = saldoInicio + plPeriodo;
-  const b3base = b2top - enJuego;
-  const b3top  = b2top;
+  const base2 = depositos + plAntes;
+  const top2  = base2 + plPeriodo;
+  const base3 = top2 - enJuego;
+  const top3  = top2;
+  const base4 = saldoActual;
+  const top4  = saldoActual + retiros;
 
-  const fmt = v => '$' + Math.round(Math.abs(v)/1000) + 'k';
+  const barColors = [
+    '#60a5fa',
+    plPeriodo >= 0 ? '#4ade80' : '#f87171',
+    '#f59e0b',
+    '#f87171',
+    '#60a5fa',
+  ];
+  const tooltipLabels = ['Depósitos', 'P&L período', 'En juego', 'Retiros', 'Saldo actual'];
 
   const ctx = document.getElementById('chart-waterfall').getContext('2d');
   charts['waterfall'] = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: ['Saldo inicial', plPeriodo >= 0 ? 'P&L (+)' : 'P&L (−)', 'En juego', 'Saldo actual'],
+      labels: ['Depósitos', plPeriodo >= 0 ? 'P&L (+)' : 'P&L (−)', 'En juego', 'Retiros', 'Saldo actual'],
       datasets: [{
         data: [
-          [0, saldoInicio],
-          [Math.min(b2base, b2top), Math.max(b2base, b2top)],
-          [b3base, b3top],
+          [0, depositos],
+          [Math.min(base2, top2), Math.max(base2, top2)],
+          [base3, top3],
+          [base4, top4],
           [0, Math.max(0, saldoActual)],
         ],
-        backgroundColor: [
-          '#60a5fa',
-          plPeriodo >= 0 ? '#4ade80' : '#f87171',
-          '#f59e0b',
-          '#60a5fa',
-        ],
+        backgroundColor: barColors,
         borderRadius: 4,
         borderSkipped: false,
         datalabels: {
@@ -1153,16 +1153,12 @@ function renderWaterfall(datosFiltrados) {
           align: 'end',
           offset: 4,
           clamp: true,
-          color: ctx => {
-            const colors = ['#60a5fa', plPeriodo >= 0 ? '#4ade80' : '#f87171', '#f59e0b', '#60a5fa'];
-            return colors[ctx.dataIndex];
-          },
+          color: ctx => barColors[ctx.dataIndex],
           font: { size: 9, family: 'monospace', weight: 'bold' },
           formatter: (val) => {
             const diff = val[1] - val[0];
-            const abs = Math.abs(Math.round(diff));
-            const prefix = diff < 0 ? '-$' : '$';
-            return prefix + abs.toLocaleString('es-CL');
+            const abs  = Math.abs(Math.round(diff));
+            return (diff < 0 ? '-$' : '$') + abs.toLocaleString('es-CL');
           }
         }
       }]
@@ -1176,9 +1172,8 @@ function renderWaterfall(datosFiltrados) {
           callbacks: {
             label: ctx => {
               const [base, top] = ctx.raw;
-              const val = top - base;
-              const labels = ['Saldo inicial', 'P&L período', 'En juego', 'Saldo actual'];
-              return `${labels[ctx.dataIndex]}: $${Math.round(Math.abs(val)).toLocaleString('es-CL')}`;
+              const val = Math.abs(Math.round(top - base));
+              return `${tooltipLabels[ctx.dataIndex]}: $${val.toLocaleString('es-CL')}`;
             }
           }
         },
@@ -1189,7 +1184,7 @@ function renderWaterfall(datosFiltrados) {
         y: {
           ticks: { color: '#64748b', font: { size: 9 }, callback: v => `$${(v/1000).toFixed(0)}k` },
           grid: { color: 'rgba(255,255,255,0.05)' },
-          min: Math.min(0, b3base - Math.abs(plPeriodo) * 0.1),
+          min: Math.min(0, base3 - Math.abs(plPeriodo) * 0.1),
         }
       }
     }
