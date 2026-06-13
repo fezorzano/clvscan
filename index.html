@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 13:51</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 13:53</div>
     </div>
   </div>
 
@@ -1087,9 +1087,17 @@ function renderWaterfall(datosFiltrados) {
 
   const mesesMov = { ene:0, feb:1, mar:2, abr:3, may:4, jun:5, jul:6, ago:7, sep:8, oct:9, nov:10, dic:11 };
   const parsearFechaMov = str => {
-    const m = String(str).trim().match(/(\d{1,2})-([a-záéíóú]{3})-(\d{2})/i);
-    if (!m) return null;
-    return new Date(2000 + parseInt(m[3]), mesesMov[m[2].toLowerCase()] ?? 0, parseInt(m[1]));
+    // Si ya es un objeto Date o timestamp
+    if (str instanceof Date) return str;
+    if (typeof str === 'number') return new Date(str);
+    const s = String(str).trim();
+    // Formato dd-mmm-yy: "03-may-26"
+    const m1 = s.match(/(\d{1,2})-([a-záéíóú]{3})-(\d{2})/i);
+    if (m1) return new Date(2000 + parseInt(m1[3]), mesesMov[m1[2].toLowerCase()] ?? 0, parseInt(m1[1]));
+    // Formato Date.toString(): "Sun May 03 2026 ..."
+    const d = new Date(s);
+    if (!isNaN(d)) return d;
+    return null;
   };
 
   const desde = document.getElementById('analytics-desde')?.value;
@@ -2305,9 +2313,14 @@ function actualizarPLSummary(resumen) {
   const SALDO_INICIAL = 400000; // fallback
   const mesesMov2 = { ene:0, feb:1, mar:2, abr:3, may:4, jun:5, jul:6, ago:7, sep:8, oct:9, nov:10, dic:11 };
   const parsearFechaMov2 = str => {
-    const m = String(str).trim().match(/(\d{1,2})-([a-záéíóú]{3})-(\d{2})/i);
-    if (!m) return null;
-    return new Date(2000 + parseInt(m[3]), mesesMov2[m[2].toLowerCase()] ?? 0, parseInt(m[1]));
+    if (str instanceof Date) return str;
+    if (typeof str === 'number') return new Date(str);
+    const s = String(str).trim();
+    const m1 = s.match(/(\d{1,2})-([a-záéíóú]{3})-(\d{2})/i);
+    if (m1) return new Date(2000 + parseInt(m1[3]), mesesMov2[m1[2].toLowerCase()] ?? 0, parseInt(m1[1]));
+    const d = new Date(s);
+    if (!isNaN(d)) return d;
+    return null;
   };
   // saldoBase = neto de todos los movimientos (para el saldo inicial del período filtrado lo calculamos abajo)
   const saldoBase = movimientos.length > 0
