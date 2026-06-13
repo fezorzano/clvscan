@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 11:28</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 11:36</div>
     </div>
   </div>
 
@@ -1085,15 +1085,54 @@ function destroyChart(id) {
 function renderWaterfall(datosFiltrados) {
   destroyChart('waterfall');
 
-  const FALLBACK = 400000;
-  const totalDepositos = movimientos.filter(m => m.tipo === 'Depósito').reduce((s, m) => s + m.monto, 0) || FALLBACK;
-  const totalRetiros   = movimientos.filter(m => m.tipo === 'Retiro').reduce((s, m) => s + m.monto, 0);
+  const mesesMov = { ene:0, feb:1, mar:2, abr:3, may:4, jun:5, jul:6, ago:7, sep:8, oct:9, nov:10, dic:11 };
+  const parsearFechaMov = str => {
+    const m = String(str).trim().match(/(\d{1,2})-([a-záéíóú]{3})-(\d{2})/i);
+    if (!m) return null;
+    return new Date(2000 + parseInt(m[3]), mesesMov[m[2].toLowerCase()] ?? 0, parseInt(m[1]));
+  };
 
   const desde = document.getElementById('analytics-desde')?.value;
   const hasta  = document.getElementById('analytics-hasta')?.value;
-  const todasCerradas = apuestas.filter(a => a.resultado !== 'pendiente');
 
-  // Saldo inicial del período = (todos depósitos - todos retiros) + P&L resuelto ANTES del período
+  // Separar movimientos en: antes del período vs dentro del período
+  const movAntes   = [];
+  const movPeriodo = [];
+  movimientos.forEach(m => {
+    const f = parsearFechaMov(m.fecha);
+    if (!f) return;
+    let antesDelPeriodo = false;
+    if (desde) {
+      const [dy, dm, dd] = desde.split('-').map(Number);
+      antesDelPeriodo = f < new Date(dy, dm - 1, dd);
+    }
+    if (antesDelPeriodo) {
+      movAntes.push(m);
+    } else {
+      // Verificar que esté dentro del período (hasta)
+      if (hasta) {
+        const [hy, hm, hd] = hasta.split('-').map(Number);
+        if (f > new Date(hy, hm - 1, hd, 23, 59, 59)) return;
+      }
+      movPeriodo.push(m);
+    }
+  });
+
+  // Si no hay filtro de fecha, todos los movimientos van al "inicial" excepto los del período
+  // Con filtro "Todo" (sin desde/hasta): todos los movimientos van a movAntes
+  if (!desde) {
+    movAntes.push(...movPeriodo.splice(0));
+  }
+
+  const netoAntes   = movAntes.reduce((s, m) => m.tipo === 'Depósito' ? s + m.monto : s - m.monto, 0);
+  const netoPeriodo = movPeriodo.reduce((s, m) => m.tipo === 'Depósito' ? s + m.monto : s - m.monto, 0);
+
+  // Fallback si no hay movimientos
+  const FALLBACK = 400000;
+  const baseNeta = movimientos.length > 0 ? netoAntes : FALLBACK;
+
+  // P&L antes del período
+  const todasCerradas = apuestas.filter(a => a.resultado !== 'pendiente');
   let plAntes = 0;
   if (desde) {
     const [dy, dm, dd] = desde.split('-').map(Number);
@@ -1102,53 +1141,16 @@ function renderWaterfall(datosFiltrados) {
       .filter(a => { const f = parsearFechaEventoChile(a.fechaEvento); return f && f < desdeDate; })
       .reduce((s, a) => s + a.pl, 0);
   }
-  const saldoInicial = (totalDepositos - totalRetiros) + plAntes;
 
-  // P&L del período filtrado
-  const plPeriodo = datosFiltrados.reduce((s, a) => s + a.pl, 0);
-
-  // En juego (global)
-  const enJuego = apuestas.filter(a => a.resultado === 'pendiente').reduce((s, a) => s + a.stake, 0);
-
-  // Dep/Ret neto del período filtrado
-  let depRetNeto = 0;
-  if (movimientos.length > 0) {
-    const meses = { ene:0, feb:1, mar:2, abr:3, may:4, jun:5, jul:6, ago:7, sep:8, oct:9, nov:10, dic:11 };
-    const parsearFechaMov = str => {
-      // Formato dd-mmm-yy, ej: "01-may-26"
-      const m = String(str).trim().match(/(\d{1,2})-([a-záéíóú]{3})-(\d{2})/i);
-      if (!m) return null;
-      return new Date(2000 + parseInt(m[3]), meses[m[2].toLowerCase()] ?? 0, parseInt(m[1]));
-    };
-    const mov = movimientos.filter(m => {
-      const f = parsearFechaMov(m.fecha);
-      if (!f) return false;
-      if (desde) {
-        const [dy, dm, dd] = desde.split('-').map(Number);
-        if (f < new Date(dy, dm - 1, dd)) return false;
-      }
-      if (hasta) {
-        const [hy, hm, hd] = hasta.split('-').map(Number);
-        if (f > new Date(hy, hm - 1, hd, 23, 59, 59)) return false;
-      }
-      return true;
-    });
-    depRetNeto = mov.reduce((s, m) => m.tipo === 'Depósito' ? s + m.monto : s - m.monto, 0);
-  }
-
-  // Saldo actual = inicial + P&L + Dep/Ret neto - en juego
-  const saldoActual = saldoInicial + plPeriodo + depRetNeto - enJuego;
+  const saldoInicial = baseNeta + plAntes;
+  const plPeriodo    = datosFiltrados.reduce((s, a) => s + a.pl, 0);
+  const enJuego      = apuestas.filter(a => a.resultado === 'pendiente').reduce((s, a) => s + a.stake, 0);
+  const saldoActual  = saldoInicial + plPeriodo + netoPeriodo - enJuego;
 
   // Barras flotantes [base, tope]
-  // B1 Inicial:  [0, saldoInicial]
-  // B2 P&L:      [saldoInicial, saldoInicial + plPeriodo]
-  // B3 En juego: [saldoInicial+plPeriodo-enJuego, saldoInicial+plPeriodo]
-  // B4 Dep/Ret:  [saldoActual-depRetNeto, saldoActual]  (puede ser neg si retiros > depósitos)
-  // B5 Actual:   [0, saldoActual]
-
   const top2  = saldoInicial + plPeriodo;
   const base3 = top2 - enJuego;
-  const base4 = saldoActual - depRetNeto;
+  const base4 = saldoActual - netoPeriodo;
 
   const barColors = [
     '#60a5fa',
@@ -2298,6 +2300,13 @@ function renderHistorial(resumen) {
 function actualizarPLSummary(resumen) {
   const BANKROLL_REFERENCIA = 1200000;
   const SALDO_INICIAL = 400000; // fallback
+  const mesesMov2 = { ene:0, feb:1, mar:2, abr:3, may:4, jun:5, jul:6, ago:7, sep:8, oct:9, nov:10, dic:11 };
+  const parsearFechaMov2 = str => {
+    const m = String(str).trim().match(/(\d{1,2})-([a-záéíóú]{3})-(\d{2})/i);
+    if (!m) return null;
+    return new Date(2000 + parseInt(m[3]), mesesMov2[m[2].toLowerCase()] ?? 0, parseInt(m[1]));
+  };
+  // saldoBase = neto de todos los movimientos (para el saldo inicial del período filtrado lo calculamos abajo)
   const saldoBase = movimientos.length > 0
     ? movimientos.reduce((s, m) => m.tipo === 'Depósito' ? s + m.monto : s - m.monto, 0)
     : SALDO_INICIAL;
@@ -2361,16 +2370,24 @@ function actualizarPLSummary(resumen) {
     ? cerradas.reduce((s, a) => s + (parseFloat(a.clv)||0) * a.stake, 0) / volumenResuelto
     : 0;
 
-  // Saldo inicial del período = $400.000 + P&L de apuestas resueltas ANTES del período
+  // Saldo inicial del período = movimientos antes del período + P&L antes del período
   let saldoInicioPeriodo = saldoBase;
   if (desde) {
     const [dy, dm, dd] = desde.split('-').map(Number);
     const desdeDate = new Date(dy, dm - 1, dd, 0, 0, 0);
+    // Solo movimientos antes del período
+    const movAntesPeriodo = movimientos.filter(m => {
+      const f = parsearFechaMov2(m.fecha);
+      return f && f < desdeDate;
+    });
+    const netoMovAntes = movAntesPeriodo.length > 0
+      ? movAntesPeriodo.reduce((s, m) => m.tipo === 'Depósito' ? s + m.monto : s - m.monto, 0)
+      : (movimientos.length > 0 ? 0 : SALDO_INICIAL);
     const antesDelPeriodo = todasCerradas.filter(a => {
       const f = parsearFechaEventoChile(a.fechaEvento);
       return f && f < desdeDate;
     });
-    saldoInicioPeriodo = saldoBase + antesDelPeriodo.reduce((s, a) => s + a.pl, 0);
+    saldoInicioPeriodo = netoMovAntes + antesDelPeriodo.reduce((s, a) => s + a.pl, 0);
   }
 
   // Saldo Coolbet filtrado = saldo inicio período + P&L real del período - en juego
