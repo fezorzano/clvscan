@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 13:46</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 13:51</div>
     </div>
   </div>
 
@@ -2055,7 +2055,9 @@ async function cargarMovimientos() {
   try {
     const res  = await fetch(`${WEB_APP_URL}?accion=obtenerMovimientos`);
     const resp = await res.json();
-    if (resp?.ok) movimientos = resp.movimientos || [];
+    if (resp?.ok) {
+      movimientos = resp.movimientos || [];
+    }
   } catch(e) { console.warn("Error cargando movimientos:", e.message); }
 }
 
@@ -2471,8 +2473,7 @@ function mostrarToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-// Init — cargar tracker desde Sheets al abrir
-cargarTrackerDesdeSheets();
+// Init — manejado por window.addEventListener('load') más arriba
 </script>
 
 <style>
