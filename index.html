@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 11:04</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 11:13</div>
     </div>
   </div>
 
@@ -1086,8 +1086,125 @@ function renderWaterfall(datosFiltrados) {
   destroyChart('waterfall');
 
   const FALLBACK = 400000;
-  const depositos = movimientos.filter(m => m.tipo === 'Depósito').reduce((s, m) => s + m.monto, 0) || FALLBACK;
-  const retiros   = movimientos.filter(m => m.tipo === 'Retiro').reduce((s, m) => s + m.monto, 0);
+  const totalDepositos = movimientos.filter(m => m.tipo === 'Depósito').reduce((s, m) => s + m.monto, 0) || FALLBACK;
+  const totalRetiros   = movimientos.filter(m => m.tipo === 'Retiro').reduce((s, m) => s + m.monto, 0);
+
+  const desde = document.getElementById('analytics-desde')?.value;
+  const hasta  = document.getElementById('analytics-hasta')?.value;
+  const todasCerradas = apuestas.filter(a => a.resultado !== 'pendiente');
+
+  // Saldo inicial del período = (todos depósitos - todos retiros) + P&L resuelto ANTES del período
+  let plAntes = 0;
+  if (desde) {
+    const [dy, dm, dd] = desde.split('-').map(Number);
+    const desdeDate = new Date(dy, dm - 1, dd, 0, 0, 0);
+    plAntes = todasCerradas
+      .filter(a => { const f = parsearFechaEventoChile(a.fechaEvento); return f && f < desdeDate; })
+      .reduce((s, a) => s + a.pl, 0);
+  }
+  const saldoInicial = (totalDepositos - totalRetiros) + plAntes;
+
+  // P&L del período filtrado
+  const plPeriodo = datosFiltrados.reduce((s, a) => s + a.pl, 0);
+
+  // En juego (global)
+  const enJuego = apuestas.filter(a => a.resultado === 'pendiente').reduce((s, a) => s + a.stake, 0);
+
+  // Dep/Ret neto del período filtrado
+  let depRetNeto = 0;
+  if (movimientos.length > 0) {
+    const mov = movimientos.filter(m => {
+      if (!desde && !hasta) return true;
+      const f = new Date(m.fecha);
+      if (desde && f < new Date(desde)) return false;
+      if (hasta  && f > new Date(hasta + 'T23:59:59')) return false;
+      return true;
+    });
+    depRetNeto = mov.reduce((s, m) => m.tipo === 'Depósito' ? s + m.monto : s - m.monto, 0);
+  }
+
+  // Saldo actual = inicial + P&L + Dep/Ret neto - en juego
+  const saldoActual = saldoInicial + plPeriodo + depRetNeto - enJuego;
+
+  // Barras flotantes [base, tope]
+  // B1 Inicial:  [0, saldoInicial]
+  // B2 P&L:      [saldoInicial, saldoInicial + plPeriodo]
+  // B3 En juego: [saldoInicial+plPeriodo-enJuego, saldoInicial+plPeriodo]
+  // B4 Dep/Ret:  [saldoActual-depRetNeto, saldoActual]  (puede ser neg si retiros > depósitos)
+  // B5 Actual:   [0, saldoActual]
+
+  const top2  = saldoInicial + plPeriodo;
+  const base3 = top2 - enJuego;
+  const base4 = saldoActual - depRetNeto;
+
+  const barColors = [
+    '#60a5fa',
+    plPeriodo >= 0 ? '#4ade80' : '#f87171',
+    '#f59e0b',
+    '#60a5fa',
+    '#60a5fa',
+  ];
+  const tooltipLabels = ['Inicial', 'P&L', 'En juego', 'Dep/Ret', 'Actual'];
+
+  const ctx = document.getElementById('chart-waterfall').getContext('2d');
+  charts['waterfall'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Inicial', plPeriodo >= 0 ? 'P&L (+)' : 'P&L (−)', 'En juego', 'Dep/Ret', 'Actual'],
+      datasets: [{
+        data: [
+          [0, saldoInicial],
+          [Math.min(saldoInicial, top2), Math.max(saldoInicial, top2)],
+          [base3, top2],
+          [Math.min(base4, saldoActual), Math.max(base4, saldoActual)],
+          [0, Math.max(0, saldoActual)],
+        ],
+        backgroundColor: barColors,
+        borderRadius: 4,
+        borderSkipped: false,
+        datalabels: {
+          display: true,
+          anchor: 'end',
+          align: 'end',
+          offset: 4,
+          clamp: true,
+          color: ctx => barColors[ctx.dataIndex],
+          font: { size: 9, family: 'monospace', weight: 'bold' },
+          formatter: (val) => {
+            const diff = val[1] - val[0];
+            const abs  = Math.abs(Math.round(diff));
+            return (diff < 0 ? '-$' : '$') + abs.toLocaleString('es-CL');
+          }
+        }
+      }]
+    },
+    options: {
+      responsive: true,
+      layout: { padding: { top: 20 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const [base, top] = ctx.raw;
+              const val = Math.abs(Math.round(top - base));
+              return `${tooltipLabels[ctx.dataIndex]}: $${val.toLocaleString('es-CL')}`;
+            }
+          }
+        },
+        datalabels: { display: false },
+      },
+      scales: {
+        x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { display: false } },
+        y: {
+          ticks: { color: '#64748b', font: { size: 9 }, callback: v => `$${(v/1000).toFixed(0)}k` },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          min: Math.min(0, base3 - Math.abs(plPeriodo) * 0.1),
+        }
+      }
+    }
+  });
+}
 
   // Saldo base neto para calcular inicio de período
   const saldoBaseW = depositos - retiros;
