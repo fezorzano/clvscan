@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v14/06 22:29</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v14/06 22:40</div>
     </div>
   </div>
 
@@ -1425,17 +1425,26 @@ function renderTablaLiga(datos) {
   document.getElementById('tabla-liga').innerHTML = html;
 }
 
-// 5. Coeficiente de variación teórico (acumulado vs ventana móvil 25)
+// 5. Coeficiente de variación teórico (acumulado vs ventana móvil 25 eventos)
 function renderProgresiónOLV(datos) {
   destroyChart('olv-prog');
 
-  // Usar TODAS las apuestas resueltas, ordenadas cronológicamente (no solo las filtradas)
+  // Usar TODAS las apuestas resueltas, agrupadas por evento único (evento+fechaEvento)
   const cerradas = apuestas.filter(a => a.resultado !== 'pendiente');
-  const sorted = [...cerradas].sort((a, b) => {
+  const sortedApuestas = [...cerradas].sort((a, b) => {
     const fa = parsearFechaEventoChile(a.fechaEvento);
     const fb = parsearFechaEventoChile(b.fechaEvento);
     return (fa||0) - (fb||0);
   });
+
+  // Agrupar en orden cronológico: cada grupo conserva la fecha de su primera aparición
+  const gruposMap = new Map();
+  sortedApuestas.forEach(a => {
+    const key = `${a.evento}|${a.fechaEvento}`;
+    if (!gruposMap.has(key)) gruposMap.set(key, []);
+    gruposMap.get(key).push(a);
+  });
+  const sorted = [...gruposMap.values()]; // array de arrays (apuestas por evento), ya en orden cronológico
 
   if (sorted.length === 0) {
     const ctx = document.getElementById('chart-olv-prog').getContext('2d');
@@ -1448,18 +1457,19 @@ function renderProgresiónOLV(datos) {
   const cvTotal = [];
   const cvMovil = [];
 
-  // Para cada apuesta i, calcular varianza individual ponderada y OLV
-  const calc = arr => {
-    // arr: subconjunto de apuestas
+  // Calcula CV sobre un conjunto de GRUPOS (cada grupo = lista de apuestas del mismo evento)
+  const calc = grupos => {
     let sumStake = 0, sumOLVxStake = 0, sumVarxStake2 = 0;
-    arr.forEach(a => {
-      const p = a.pinnacle > 0 ? 1 / a.pinnacle : 0; // probabilidad justa
-      const cuota = a.coolbet || a.pinnacle || 1;
-      const varInd = p * (1 - p) * cuota * cuota; // varianza del retorno individual
-      const olv = (parseFloat(a.clv) || 0) / 100; // OLV en decimal
-      sumStake      += a.stake;
-      sumOLVxStake  += olv * a.stake;
-      sumVarxStake2 += varInd * a.stake * a.stake;
+    grupos.forEach(grupo => {
+      grupo.forEach(a => {
+        const p = a.pinnacle > 0 ? 1 / a.pinnacle : 0; // probabilidad justa
+        const cuota = a.coolbet || a.pinnacle || 1;
+        const varInd = p * (1 - p) * cuota * cuota; // varianza del retorno individual
+        const olv = (parseFloat(a.clv) || 0) / 100; // OLV en decimal
+        sumStake      += a.stake;
+        sumOLVxStake  += olv * a.stake;
+        sumVarxStake2 += varInd * a.stake * a.stake;
+      });
     });
     if (sumStake === 0) return null;
     const olvProm   = sumOLVxStake / sumStake;
@@ -1468,22 +1478,27 @@ function renderProgresiónOLV(datos) {
     return sigmaYield / olvProm; // CV
   };
 
-  sorted.forEach((a, i) => {
-    const f = parsearFechaEventoChile(a.fechaEvento);
+  sorted.forEach((grupo, i) => {
+    const primera = grupo[0];
+    const f = parsearFechaEventoChile(primera.fechaEvento);
     const label = f
       ? `${f.getDate()}/${f.getMonth()+1}`
       : '?';
     labels.push(label);
 
-    // CV acumulado (desde el inicio hasta i)
+    // CV acumulado (desde el inicio hasta el evento i)
     const acumulado = sorted.slice(0, i + 1);
     const cvT = calc(acumulado);
     cvTotal.push(cvT !== null ? parseFloat(cvT.toFixed(2)) : null);
 
-    // CV móvil (últimas VENTANA apuestas)
-    const ventana = sorted.slice(Math.max(0, i + 1 - VENTANA), i + 1);
-    const cvM = calc(ventana);
-    cvMovil.push(cvM !== null ? parseFloat(cvM.toFixed(2)) : null);
+    // CV móvil (últimos VENTANA eventos) — solo a partir del evento 25
+    if (i + 1 >= VENTANA) {
+      const ventana = sorted.slice(Math.max(0, i + 1 - VENTANA), i + 1);
+      const cvM = calc(ventana);
+      cvMovil.push(cvM !== null ? parseFloat(cvM.toFixed(2)) : null);
+    } else {
+      cvMovil.push(null);
+    }
   });
 
   const ctx = document.getElementById('chart-olv-prog').getContext('2d');
@@ -1492,14 +1507,14 @@ function renderProgresiónOLV(datos) {
     data: {
       labels,
       datasets: [
-        { label: `CV últimas ${VENTANA}`, data: cvMovil, borderColor: '#475569', backgroundColor: 'rgba(71,85,105,0.08)', tension: 0.3, fill: false, pointRadius: 0, borderWidth: 1.5 },
-        { label: 'CV acumulado', data: cvTotal, borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,0.08)', tension: 0.2, fill: false, pointRadius: 0, borderWidth: 2 },
+        { label: 'Últimos 25 eventos', data: cvMovil, borderColor: '#475569', backgroundColor: 'rgba(71,85,105,0.08)', tension: 0.3, fill: false, pointRadius: 0, borderWidth: 1.5 },
+        { label: 'Total', data: cvTotal, borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,0.08)', tension: 0.2, fill: false, pointRadius: 0, borderWidth: 2 },
       ]
     },
     options: {
       responsive: true,
       plugins: {
-        legend: { display: true, position: 'top', labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 12 } },
+        legend: { display: true, position: 'top', labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 20, boxHeight: 1, usePointStyle: false } },
         tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw}x` } },
         datalabels: { display: false },
       },
