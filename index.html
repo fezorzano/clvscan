@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/06 14:19</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v14/06 22:29</div>
     </div>
   </div>
 
@@ -832,8 +832,8 @@
     <div class="section-title">Resumen por Liga</div>
     <div id="tabla-liga" style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;overflow-x:auto;"></div>
 
-    <!-- 6. Progresión OLV promedio -->
-    <div class="section-title">Progresión OLV Promedio</div>
+    <!-- 6. Coeficiente de variación (OLV vs ruido teórico) -->
+    <div class="section-title">Coeficiente de Variación (teórico)</div>
     <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
       <canvas id="chart-olv-prog" height="200"></canvas>
     </div>
@@ -1425,27 +1425,65 @@ function renderTablaLiga(datos) {
   document.getElementById('tabla-liga').innerHTML = html;
 }
 
-// 5. Progresión OLV promedio ponderado
+// 5. Coeficiente de variación teórico (acumulado vs ventana móvil 25)
 function renderProgresiónOLV(datos) {
   destroyChart('olv-prog');
-  const sorted = [...datos].sort((a, b) => {
+
+  // Usar TODAS las apuestas resueltas, ordenadas cronológicamente (no solo las filtradas)
+  const cerradas = apuestas.filter(a => a.resultado !== 'pendiente');
+  const sorted = [...cerradas].sort((a, b) => {
     const fa = parsearFechaEventoChile(a.fechaEvento);
     const fb = parsearFechaEventoChile(b.fechaEvento);
     return (fa||0) - (fb||0);
   });
 
-  let sumOLV = 0, sumStake = 0;
-  const labels = [], olvData = [];
+  if (sorted.length === 0) {
+    const ctx = document.getElementById('chart-olv-prog').getContext('2d');
+    charts['olv-prog'] = new Chart(ctx, { type: 'line', data: { labels: [], datasets: [] }, options: chartOpts('x') });
+    return;
+  }
+
+  const VENTANA = 25;
+  const labels = [];
+  const cvTotal = [];
+  const cvMovil = [];
+
+  // Para cada apuesta i, calcular varianza individual ponderada y OLV
+  const calc = arr => {
+    // arr: subconjunto de apuestas
+    let sumStake = 0, sumOLVxStake = 0, sumVarxStake2 = 0;
+    arr.forEach(a => {
+      const p = a.pinnacle > 0 ? 1 / a.pinnacle : 0; // probabilidad justa
+      const cuota = a.coolbet || a.pinnacle || 1;
+      const varInd = p * (1 - p) * cuota * cuota; // varianza del retorno individual
+      const olv = (parseFloat(a.clv) || 0) / 100; // OLV en decimal
+      sumStake      += a.stake;
+      sumOLVxStake  += olv * a.stake;
+      sumVarxStake2 += varInd * a.stake * a.stake;
+    });
+    if (sumStake === 0) return null;
+    const olvProm   = sumOLVxStake / sumStake;
+    const sigmaYield = Math.sqrt(sumVarxStake2) / sumStake;
+    if (olvProm <= 0) return null;
+    return sigmaYield / olvProm; // CV
+  };
 
   sorted.forEach((a, i) => {
-    sumOLV   += (parseFloat(a.clv)||0) * a.stake;
-    sumStake += a.stake;
     const f = parsearFechaEventoChile(a.fechaEvento);
     const label = f
-      ? `${f.getDate()}/${f.getMonth()+1} ${String(f.getHours()).padStart(2,'0')}:${String(f.getMinutes()).padStart(2,'0')}`
+      ? `${f.getDate()}/${f.getMonth()+1}`
       : '?';
     labels.push(label);
-    olvData.push(sumStake > 0 ? parseFloat((sumOLV / sumStake).toFixed(2)) : 0);
+
+    // CV acumulado (desde el inicio hasta i)
+    const acumulado = sorted.slice(0, i + 1);
+    const cvT = calc(acumulado);
+    cvTotal.push(cvT !== null ? parseFloat(cvT.toFixed(2)) : null);
+
+    // CV móvil (últimas VENTANA apuestas)
+    const ventana = sorted.slice(Math.max(0, i + 1 - VENTANA), i + 1);
+    const cvM = calc(ventana);
+    cvMovil.push(cvM !== null ? parseFloat(cvM.toFixed(2)) : null);
   });
 
   const ctx = document.getElementById('chart-olv-prog').getContext('2d');
@@ -1454,10 +1492,26 @@ function renderProgresiónOLV(datos) {
     data: {
       labels,
       datasets: [
-        { label: 'OLV Prom acumulado', data: olvData, borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,0.1)', tension: 0.3, fill: true, pointRadius: 2 },
+        { label: `CV últimas ${VENTANA}`, data: cvMovil, borderColor: '#475569', backgroundColor: 'rgba(71,85,105,0.08)', tension: 0.3, fill: false, pointRadius: 0, borderWidth: 1.5 },
+        { label: 'CV acumulado', data: cvTotal, borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,0.08)', tension: 0.2, fill: false, pointRadius: 0, borderWidth: 2 },
       ]
     },
-    options: { ...chartOpts('%'), plugins: { ...chartOpts('%').plugins, legend: { display: false } } }
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: true, position: 'top', labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw}x` } },
+        datalabels: { display: false },
+      },
+      scales: {
+        x: { ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 10 }, grid: { display: false } },
+        y: {
+          type: 'logarithmic',
+          ticks: { color: '#64748b', font: { size: 9 }, callback: v => `${v}x` },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+        }
+      }
+    }
   });
 }
 
