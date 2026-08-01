@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v01/08 07:38</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v01/08 08:09</div>
     </div>
   </div>
 
@@ -2135,17 +2135,34 @@ async function cargarMovimientos() {
 }
 
 // Carga inicial
-// Arranca en DOMContentLoaded (no en 'load') para no esperar a que terminen de
-// bajar las librerías de gráficos, y dispara las dos consultas EN PARALELO.
-// Los <script src> del head son bloqueantes, así que Chart.js ya está listo acá.
-document.addEventListener('DOMContentLoaded', async () => {
-  actualizarProximoEscaneo();
-  await Promise.all([
-    cargarMovimientos(),
-    cargarTrackerDesdeSheets(),
-  ]);
-  renderAnalytics();
-});
+// Arranque robusto: se ejecuta una sola vez, pase lo que pase.
+// - allSettled: si una consulta falla, igual se renderiza con lo que haya
+// - las consultas van en serie porque Apps Script serializa las llamadas
+//   simultáneas del mismo usuario y la segunda puede quedar esperando
+// - readyState: si el DOM ya está listo cuando corre este script, arranca al
+//   tiro en vez de esperar un evento que quizá ya pasó
+let _initHecho = false;
+async function initDashboard() {
+  if (_initHecho) return;
+  _initHecho = true;
+  console.log('[CLV] init — arrancando carga');
+  try { actualizarProximoEscaneo(); } catch(e) { console.warn('[CLV] próximo escaneo:', e.message); }
+
+  const r = await Promise.allSettled([cargarTrackerDesdeSheets()]);
+  console.log('[CLV] tracker listo —', apuestas.length, 'apuestas');
+  try { renderAnalytics(); } catch(e) { console.warn('[CLV] render 1:', e.message); }
+
+  await Promise.allSettled([cargarMovimientos()]);
+  console.log('[CLV] movimientos listos —', movimientos.length, 'registros');
+  try { renderAnalytics(); } catch(e) { console.warn('[CLV] render 2:', e.message); }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initDashboard);
+} else {
+  initDashboard();
+}
+window.addEventListener('load', initDashboard);  // red de seguridad
 function calcularKelly() {
   const coolbet  = parseFloat(document.getElementById('k-coolbet').value);
   const pinnacle = parseFloat(document.getElementById('k-pinnacle').value);
