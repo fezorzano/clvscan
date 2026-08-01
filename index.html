@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v27/07 11:53</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v01/08 07:38</div>
     </div>
   </div>
 
@@ -2135,10 +2135,15 @@ async function cargarMovimientos() {
 }
 
 // Carga inicial
-window.addEventListener('load', async () => {
+// Arranca en DOMContentLoaded (no en 'load') para no esperar a que terminen de
+// bajar las librerías de gráficos, y dispara las dos consultas EN PARALELO.
+// Los <script src> del head son bloqueantes, así que Chart.js ya está listo acá.
+document.addEventListener('DOMContentLoaded', async () => {
   actualizarProximoEscaneo();
-  await cargarMovimientos();
-  await cargarTrackerDesdeSheets();
+  await Promise.all([
+    cargarMovimientos(),
+    cargarTrackerDesdeSheets(),
+  ]);
   renderAnalytics();
 });
 function calcularKelly() {
