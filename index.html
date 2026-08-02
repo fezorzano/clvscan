@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v01/08 12:56</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v01/08 23:18</div>
     </div>
   </div>
 
@@ -2105,7 +2105,7 @@ function renderKeys(e) {
           <div style="width:${pct}%;height:100%;background:${color};border-radius:2px;"></div>
         </div>
         <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);white-space:nowrap;">
-          ${k.agotada ? 'AGOTADA' : k.remaining + ' req'}${resetInfo}
+          ${k.agotada ? 'AGOTADA' : (k.sinDato ? 'sin medir' : k.remaining + ' req')}${resetInfo}
         </div>
       </div>`;
   }).join('');
