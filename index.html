@@ -557,7 +557,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v01/08 23:18</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v01/08 23:59</div>
     </div>
   </div>
 
@@ -578,23 +578,9 @@
         <div class="stat-label">Mercados</div>
       </div>
       <div class="stat-card">
-        <div class="stat-val" id="stat-verdes" style="color:#f8fafc">—</div>
-        <div class="stat-label">OLV &gt;5%</div>
+        <div class="stat-val" id="stat-olv-prom" style="color:#f8fafc">—</div>
+        <div class="stat-label">OLV prom</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-val" id="stat-amarillos" style="color:#cbd5e1">—</div>
-        <div class="stat-label">OLV &gt;3%</div>
-      </div>
-    </div>
-
-    <!-- Filters -->
-    <div class="filters">
-      <button class="filter-btn active" onclick="filtrar('todos', this)">Todos</button>
-      <button class="filter-btn" onclick="filtrar('verde', this)">● Clara</button>
-      <button class="filter-btn" onclick="filtrar('amarillo', this)">● Posible</button>
-      <button class="filter-btn" onclick="filtrar('futbol', this)">⚽ Fútbol</button>
-      <button class="filter-btn" onclick="filtrar('tenis', this)">🎾 Tenis</button>
-      <button class="filter-btn" onclick="filtrar('basket', this)">🏀 Basket</button>
     </div>
 
     <div class="update-time" id="updateTime">Presiona SCAN para buscar oportunidades</div>
@@ -716,7 +702,7 @@
       <div style="width:14px;flex-shrink:0;margin-right:4px;"></div>
       <div class="pl-summary" style="grid-template-columns:1.2fr 1fr 1fr;flex:1;margin-bottom:0;">
       <div class="pl-card" style="min-width:0;overflow:hidden;">
-        <div class="pl-val" id="pl-saldo" style="color:var(--blue);font-size:clamp(13px,4vw,20px);">$400.000</div>
+        <div class="pl-val" id="pl-saldo" style="color:var(--blue);font-size:clamp(13px,4vw,20px);">—</div>
         <div class="stat-label">Coolbet</div>
       </div>
       <div class="pl-card" style="min-width:0;overflow:hidden;">
@@ -854,15 +840,7 @@ Chart.register(ChartDataLabels);
 Chart.defaults.set('plugins.datalabels', { display: false });
 
 // ==================== ANALYTICS ====================
-let analyticsFilter = 'todos';
 let charts = {};
-
-function setAnalyticsFilter(filtro, el) {
-  document.querySelectorAll('#tab-analytics .filter-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  analyticsFilter = filtro;
-  renderAnalytics();
-}
 
 function cambiarTab(tab, el) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -888,72 +866,8 @@ const sheetsConectado = true;
 // ==================== ESTADO ====================
 let apuestas    = []; // siempre desde Sheets, nunca localStorage
 let movimientos = []; // depósitos y retiros desde Sheets
-let filtroActual = 'todos';
 let oportunidadesAumentar = []; // se guarda globalmente para mostrar en tracker
 
-// Datos demo para ilustrar el sistema
-const DEMO_OPORTUNIDADES = [
-  {
-    nivel: 'verde',
-    deporte: '⚽ Premier League',
-    evento: 'Arsenal vs Chelsea',
-    seleccion: 'Arsenal',
-    cuotaCoolbet: 2.35,
-    cuotaPinnacle: 2.18,
-    clv: 7.8,
-    ev: 4.2,
-    stake: 18000,
-    fecha: 'Hoy 21:00'
-  },
-  {
-    nivel: 'verde',
-    deporte: '🎾 Roland Garros ATP',
-    evento: 'Alcaraz vs Sinner',
-    seleccion: 'Alcaraz',
-    cuotaCoolbet: 1.95,
-    cuotaPinnacle: 1.81,
-    clv: 7.7,
-    ev: 3.9,
-    stake: 15000,
-    fecha: 'Mañana 14:00'
-  },
-  {
-    nivel: 'amarillo',
-    deporte: '⚽ Copa Libertadores',
-    evento: 'Colo-Colo vs Flamengo',
-    seleccion: 'Empate',
-    cuotaCoolbet: 3.40,
-    cuotaPinnacle: 3.22,
-    clv: 5.6,
-    ev: 2.8,
-    stake: 9000,
-    fecha: 'Hoy 22:00'
-  },
-  {
-    nivel: 'amarillo',
-    deporte: '⚽ La Liga',
-    evento: 'Barcelona vs Atlético',
-    seleccion: 'Barcelona',
-    cuotaCoolbet: 1.75,
-    cuotaPinnacle: 1.67,
-    clv: 4.8,
-    ev: 2.1,
-    stake: 11000,
-    fecha: 'Dom 20:30'
-  },
-  {
-    nivel: 'amarillo',
-    deporte: '🎾 Roland Garros WTA',
-    evento: 'Swiatek vs Gauff',
-    seleccion: 'Swiatek',
-    cuotaCoolbet: 1.62,
-    cuotaPinnacle: 1.55,
-    clv: 4.5,
-    ev: 1.8,
-    stake: 8000,
-    fecha: 'Mañana 11:00'
-  },
-];
 
 let oportunidadesActuales = [];
 
@@ -1042,8 +956,6 @@ function renderAnalytics() {
 
   // Filtrar por resultado
   let datos = apuestas.filter(a => a.resultado !== 'pendiente');
-  if (analyticsFilter === 'verde')    datos = datos.filter(a => parseFloat(a.clv) >= 5);
-  if (analyticsFilter === 'amarillo') datos = datos.filter(a => parseFloat(a.clv) >= 3 && parseFloat(a.clv) < 5);
 
   // Filtrar por rango de fechas
   const desde = document.getElementById('analytics-desde')?.value;
@@ -1416,7 +1328,7 @@ function renderTablaLiga(datos) {
       </tr>
       ${rows.map(r => `
         <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-          <td style="padding:6px 4px;color:var(--text2);font-size:10px;">${r.liga.replace(/⚽|🎾|🏀/g,'').trim()}</td>
+          <td style="padding:6px 4px;color:var(--text2);font-size:10px;">${r.liga.replace(/⚽/g,'').trim()}</td>
           <td style="padding:6px 4px;text-align:center;color:var(--muted);">${r.apuestas}</td>
           <td style="padding:6px 4px;text-align:center;color:var(--green);">+${r.olv.toFixed(1).replace('.',',')}%</td>
           <td style="padding:6px 4px;text-align:center;color:${r.plReal >= 0 ? 'var(--green)' : 'var(--red)'};">${r.plReal >= 0 ? '+' : ''}$${Math.round(r.plReal).toLocaleString('es-CL')}</td>
@@ -1715,6 +1627,13 @@ const HORARIOS_POR_DIA = {
 
 let ultimoTsEscaneo = null; // se actualiza al cargar oportunidades
 
+// Horarios de escaneo del día en curso, en hora Chile.
+function horariosDeHoy() {
+  const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
+  const hs = HORARIOS_POR_DIA[ahora.getDay()] || [];
+  return hs.map(m => `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`).join(', ');
+}
+
 function calcularProximoEscaneo(desdeTs) {
   // desdeTs: string de fecha/hora del último escaneo real, o null → usa ahora
   const diasNombre = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
@@ -1851,23 +1770,13 @@ async function simularEscaneo() {
 
 function actualizarStats(ops) {
   document.getElementById('stat-total').textContent = ops.length;
-  document.getElementById('stat-verdes').textContent   = ops.filter(o => o.nivel === 'verde').length;
-  document.getElementById('stat-amarillos').textContent = ops.filter(o => o.nivel === 'amarillo').length;
-}
-
-function filtrar(tipo, el) {
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  filtroActual = tipo;
-
-  let filtradas = [...oportunidadesActuales];
-  if (tipo === 'verde')    filtradas = filtradas.filter(o => o.nivel === 'verde');
-  if (tipo === 'amarillo') filtradas = filtradas.filter(o => o.nivel === 'amarillo');
-  if (tipo === 'futbol')   filtradas = filtradas.filter(o => o.deporte.includes('⚽'));
-  if (tipo === 'tenis')    filtradas = filtradas.filter(o => o.deporte.includes('🎾'));
-  if (tipo === 'basket')   filtradas = filtradas.filter(o => o.deporte.includes('🏀'));
-
-  renderOportunidades(filtradas);
+  const el = document.getElementById('stat-olv-prom');
+  if (!el) return;
+  const stake = ops.reduce((s, o) => s + (o.stake || 0), 0);
+  const olv   = stake > 0
+    ? ops.reduce((s, o) => s + (parseFloat(o.clv) || 0) * (o.stake || 0), 0) / stake
+    : 0;
+  el.textContent = ops.length === 0 ? '—' : (olv >= 0 ? '+' : '') + fmtPct(olv) + '%';
 }
 
 function renderOportunidades(ops, error = false) {
@@ -2041,9 +1950,6 @@ function getCoolbetUrl(deporte) {
   if (d.includes("africa cup"))          return `${base}/futbol/africa/copa-africa`;
   if (d.includes("world cup") || d.includes("mundial") || d.includes("fifa")) return `${base}/futbol/mundial`;
   if (d.includes("⚽"))                  return `${base}/futbol`;
-  if (d.includes("🏀") || d.includes("nba"))              return `${base}/baloncesto/estados-unidos/nba`;
-  if (d.includes("euroliga"))                              return `${base}/baloncesto/europa/euroliga`;
-  if (d.includes("🎾") || d.includes("atp") || d.includes("wta") || d.includes("roland") || d.includes("wimbledon") || d.includes("open")) return `${base}/tenis`;
 
   return base;
 }
@@ -2116,7 +2022,7 @@ function renderKeys(e) {
       <div style="margin-bottom:12px;">${proyHtml}</div>
       <div style="border-top:1px solid var(--border);padding-top:10px;">${keysHtml}</div>
       <div style="font-size:9px;color:var(--muted);margin-top:8px;font-family:var(--font-mono);">
-        Keys activas: ${e.keysActivas}/${e.totalKeys} · Umbral: ${e.REQ_POR_ESCANEO} req/escaneo · Escaneos: 07:00, 13:00 y 19:00
+        Keys activas: ${e.keysActivas}/${e.totalKeys} · Umbral: ${e.REQ_POR_ESCANEO} req/escaneo · Hoy: ${horariosDeHoy()}
       </div>
     </div>`;
 }
@@ -2151,6 +2057,7 @@ async function initDashboard() {
   try { actualizarProximoEscaneo(); } catch(e) { console.warn('[CLV] próximo escaneo:', e.message); }
 
   const r = await Promise.allSettled([cargarTrackerDesdeSheets()]);
+  await Promise.allSettled([cargarConfig()]);
   console.log('[CLV] tracker listo —', apuestas.length, 'apuestas');
   try { renderAnalytics(); } catch(e) { console.warn('[CLV] render 1:', e.message); }
 
@@ -2165,6 +2072,29 @@ if (document.readyState === 'loading') {
   initDashboard();
 }
 window.addEventListener('load', initDashboard);  // red de seguridad
+// Parámetros reales del scanner. Se leen del Apps Script para no tener dos
+// fuentes de verdad; si la consulta falla se usan estos valores de respaldo.
+let cfgScanner = { bankroll: 700000, kellyFraccion: 0.35, topeKelly: 0.05,
+                   umbralOLV: 0.05, cuotaMax: 4.5, diasAnticip: 4 };
+
+async function cargarConfig() {
+  try {
+    const res  = await fetch(`${WEB_APP_URL}?accion=obtenerConfig`);
+    const resp = await res.json();
+    if (resp?.ok && resp.config) cfgScanner = { ...cfgScanner, ...resp.config };
+  } catch(e) { console.warn('[CLV] config:', e.message); }
+}
+
+// Espejo de calcularKellyDin() del Apps Script: si allá cambia la escala,
+// hay que cambiarla acá también.
+function topePorCuota(cuota, topeBase) {
+  if (cuota <= 6)       return topeBase;
+  else if (cuota <= 10) return topeBase * 0.6;
+  else if (cuota <= 20) return topeBase * 0.3;
+  else if (cuota <= 40) return topeBase * 0.14;
+  else                  return topeBase * 0.06;
+}
+
 function calcularKelly() {
   const coolbet  = parseFloat(document.getElementById('k-coolbet').value);
   const pinnacle = parseFloat(document.getElementById('k-pinnacle').value);
@@ -2175,29 +2105,34 @@ function calcularKelly() {
     return;
   }
 
-  const probJusta = 1 / pinnacle;
-  const clv  = ((coolbet / pinnacle) - 1) * 100;
-  // Kelly logarítmico: f = EV × k / ln(cuota), k=0.7 (temporal rollover), tope 4%
-  const evDecimal = (probJusta * coolbet) - 1;
-  const ev   = evDecimal * 100;
-  const f    = evDecimal > 0 ? Math.min(evDecimal * 0.7 / Math.log(coolbet), 0.05) : 0;
-  const stake = Math.round(500000 * f / 1000) * 1000;
+  const probJusta  = 1 / pinnacle;
+  const clv        = ((coolbet / pinnacle) - 1) * 100;
+  const evDecimal  = (probJusta * coolbet) - 1;
+  const ev         = evDecimal * 100;
+
+  const tope  = topePorCuota(coolbet, cfgScanner.topeKelly);
+  const f     = evDecimal > 0
+    ? Math.min(evDecimal * cfgScanner.kellyFraccion / Math.log(coolbet), tope)
+    : 0;
+  const sobreCuotaMax = coolbet > cfgScanner.cuotaMax;
+  const stake = sobreCuotaMax ? 0 : Math.round(cfgScanner.bankroll * f / 1000) * 1000;
 
   document.getElementById('k-clv').textContent   = (clv >= 0 ? '+' : '') + clv.toFixed(1) + '%';
   document.getElementById('k-ev').textContent    = (ev  >= 0 ? '+' : '') + ev.toFixed(1)  + '%';
-  document.getElementById('k-stake').textContent = '$' + stake.toLocaleString('es-CL');
+  document.getElementById('k-stake').textContent = sobreCuotaMax ? '—' : '$' + stake.toLocaleString('es-CL');
 
-  const alerta = document.getElementById('k-alerta');
-  if (clv >= 5) {
-    alerta.textContent = '🟢 CLV clara — vale apostar';
+  const alerta   = document.getElementById('k-alerta');
+  const umbralPc = cfgScanner.umbralOLV * 100;
+  if (sobreCuotaMax) {
+    alerta.textContent = `🔴 Cuota ${coolbet} sobre el máximo de ${cfgScanner.cuotaMax} — no apostar`;
+    alerta.style.background = '#300';
+    alerta.style.color = 'var(--red)';
+  } else if (clv >= umbralPc) {
+    alerta.textContent = `🟢 OLV sobre el umbral de ${fmtPct(umbralPc)}% — vale apostar`;
     alerta.style.background = 'var(--green-dim)';
     alerta.style.color = 'var(--green)';
-  } else if (clv >= 3) {
-    alerta.textContent = '🟡 CLV posible — a tu criterio';
-    alerta.style.background = 'var(--yellow-dim)';
-    alerta.style.color = 'var(--yellow)';
   } else {
-    alerta.textContent = '🔴 CLV insuficiente — no recomendado';
+    alerta.textContent = `🔴 OLV bajo el umbral de ${fmtPct(umbralPc)}% — no recomendado`;
     alerta.style.background = '#300';
     alerta.style.color = 'var(--red)';
   }
