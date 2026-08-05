@@ -153,6 +153,17 @@
 
   .filters::-webkit-scrollbar { display: none; }
 
+  .fecha-scroll {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .fecha-scroll::-webkit-scrollbar { display: none; }
+
   .filter-btn {
     flex-shrink: 0;
     background: var(--surface);
@@ -561,7 +572,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v02/08 08:49</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v03/08 23:15</div>
     </div>
   </div>
 
@@ -690,15 +701,20 @@
   <!-- TAB: ANALYTICS -->
   <div class="tab-content active" id="tab-analytics">
 
-    <!-- Filtro de fecha -->
-    <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+    <!-- Filtro de fecha: fila única con scroll horizontal -->
+    <div class="fecha-scroll">
       <button class="filter-btn active" id="btn-fecha-todo" onclick="setFechaAtajo(-1, this)">Todo</button>
       <button class="filter-btn" id="btn-fecha-hoy" onclick="setFechaAtajo(0, this)">Hoy</button>
       <button class="filter-btn" id="btn-fecha-ayer" onclick="setFechaAtajo(1, this)">Ayer</button>
       <button class="filter-btn" id="btn-fecha-7" onclick="setFechaAtajo(7, this)">7 días</button>
-      <button class="filter-btn" id="btn-fecha-30" onclick="setFechaAtajo(30, this)">30 días</button>
-      <div id="analytics-periodo" style="width:100%;text-align:center;font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-top:4px;"></div>
+      <button class="filter-btn" id="btn-fecha-m1" onclick="setFechaAtajo(null, this, 1)">1 mes</button>
+      <button class="filter-btn" id="btn-fecha-m2" onclick="setFechaAtajo(null, this, 2)">2 meses</button>
+      <button class="filter-btn" id="btn-fecha-m3" onclick="setFechaAtajo(null, this, 3)">3 meses</button>
+      <button class="filter-btn" id="btn-fecha-m4" onclick="setFechaAtajo(null, this, 4)">4 meses</button>
+      <button class="filter-btn" id="btn-fecha-m5" onclick="setFechaAtajo(null, this, 5)">5 meses</button>
+      <button class="filter-btn" id="btn-fecha-m6" onclick="setFechaAtajo(null, this, 6)">6 meses</button>
     </div>
+    <div id="analytics-periodo" style="text-align:center;font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-top:6px;margin-bottom:12px;"></div>
 
     <!-- P&L Summary -->
     <!-- Fila 1: filtrada — azul -->
@@ -902,7 +918,7 @@ function parsearFechaEventoChile(str) {
   } catch(e) { return null; }
 }
 
-function setFechaAtajo(dias, el) {
+function setFechaAtajo(dias, el, nMeses) {
   document.querySelectorAll('#tab-analytics .filter-btn').forEach(b => b.classList.remove('active'));
   if (el) el.classList.add('active');
 
@@ -939,7 +955,21 @@ function setFechaAtajo(dias, el) {
     hasta.value  = ayerStr;
     document.getElementById('analytics-periodo').textContent = fmtMes(ayerStr);
   } else {
-    const d = new Date(hoy); d.setDate(hoy.getDate() - dias);
+    const d = new Date(hoy);
+    if (nMeses) {
+      // Meses de calendario, no bloques de 30 días.
+      const diaOriginal = hoy.getDate();
+      d.setMonth(hoy.getMonth() - nMeses);
+      // Si el mes destino no tiene ese día (31 de marzo → febrero), JS se
+      // desborda al mes siguiente; se corrige al último día del mes destino.
+      if (d.getDate() !== diaOriginal) d.setDate(0);
+    } else {
+      d.setDate(hoy.getDate() - dias);
+    }
+    // El extremo inicial queda abierto: se corre un día para no contar dos
+    // veces el día de partida. Así "1 mes" son 31 días y "7 días" son 7,
+    // en vez de 32 y 8 como pasaba al incluir ambos días completos.
+    d.setDate(d.getDate() + 1);
     const dStr = fmtChile(d);
     desde.value = dStr;
     hasta.value  = hoyStr;
@@ -2047,27 +2077,54 @@ async function cargarMovimientos() {
 }
 
 // Carga inicial
-// Arranque robusto: se ejecuta una sola vez, pase lo que pase.
-// - allSettled: si una consulta falla, igual se renderiza con lo que haya
-// - las consultas van en serie porque Apps Script serializa las llamadas
-//   simultáneas del mismo usuario y la segunda puede quedar esperando
-// - readyState: si el DOM ya está listo cuando corre este script, arranca al
-//   tiro en vez de esperar un evento que quizá ya pasó
+// Arranque: una sola consulta al Apps Script con todo lo necesario.
+// Antes eran tres seguidas (tracker, config, movimientos) y cada una cuesta
+// segundos por la redirección del Web App. Si esa consulta falla, se cae al
+// camino antiguo de consultas separadas.
 let _initHecho = false;
+
+async function fetchConTimeout(url, ms = 25000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try { return await fetch(url, { signal: ctrl.signal }); }
+  finally { clearTimeout(t); }
+}
+
+async function cargarTodo() {
+  const res  = await fetchConTimeout(`${WEB_APP_URL}?accion=obtenerTodo`);
+  const resp = await res.json();
+  if (!resp?.ok) throw new Error('respuesta sin ok');
+
+  if (resp.tracker) {
+    apuestas = resp.tracker.apuestas || [];
+    renderHistorial(resp.tracker.resumen);
+    renderAumentarStake(oportunidadesAumentar);
+  }
+  movimientos = resp.movimientos || [];
+  if (resp.config) cfgScanner = { ...cfgScanner, ...resp.config };
+  if (resp.tsEscaneo) ultimoTsEscaneo = resp.tsEscaneo;
+}
+
 async function initDashboard() {
   if (_initHecho) return;
   _initHecho = true;
-  console.log('[CLV] init — arrancando carga');
+  const t0 = Date.now();
   try { actualizarProximoEscaneo(); } catch(e) { console.warn('[CLV] próximo escaneo:', e.message); }
 
-  const r = await Promise.allSettled([cargarTrackerDesdeSheets()]);
-  await Promise.allSettled([cargarConfig()]);
-  console.log('[CLV] tracker listo —', apuestas.length, 'apuestas');
-  try { renderAnalytics(); } catch(e) { console.warn('[CLV] render 1:', e.message); }
+  try {
+    await cargarTodo();
+    console.log(`[CLV] carga única OK en ${((Date.now()-t0)/1000).toFixed(1)}s —`,
+                apuestas.length, 'apuestas ·', movimientos.length, 'movimientos');
+  } catch(e) {
+    console.warn('[CLV] carga única falló (' + e.message + '), usando consultas separadas');
+    await Promise.allSettled([cargarTrackerDesdeSheets()]);
+    await Promise.allSettled([cargarMovimientos()]);
+    await Promise.allSettled([cargarConfig()]);
+    console.log(`[CLV] respaldo listo en ${((Date.now()-t0)/1000).toFixed(1)}s`);
+  }
 
-  await Promise.allSettled([cargarMovimientos()]);
-  console.log('[CLV] movimientos listos —', movimientos.length, 'registros');
-  try { renderAnalytics(); } catch(e) { console.warn('[CLV] render 2:', e.message); }
+  try { actualizarProximoEscaneo(); } catch(e) {}
+  try { renderAnalytics(); } catch(e) { console.warn('[CLV] render:', e.message); }
 }
 
 if (document.readyState === 'loading') {
