@@ -572,7 +572,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v03/08 23:15</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v06/08 12:38</div>
     </div>
   </div>
 
@@ -1402,6 +1402,7 @@ function renderProgresiónOLV(datos) {
 
   const VENTANA = 25;
   const labels = [];
+  const fechas = [];
   const cvTotal = [];
   const cvMovil = [];
 
@@ -1433,6 +1434,7 @@ function renderProgresiónOLV(datos) {
       ? `${f.getDate()}/${f.getMonth()+1}`
       : '?';
     labels.push(label);
+    fechas.push(f);
 
     // CV acumulado (desde el inicio hasta el evento i)
     const acumulado = sorted.slice(0, i + 1);
@@ -1449,14 +1451,37 @@ function renderProgresiónOLV(datos) {
     }
   });
 
+  // El cálculo se hace sobre TODO el histórico —el acumulado no tendría sentido
+  // reiniciándose, y la ventana móvil necesita los 24 eventos previos—, pero
+  // solo se muestran los puntos que caen dentro del rango de fechas elegido.
+  const desde = document.getElementById('analytics-desde')?.value;
+  const hasta = document.getElementById('analytics-hasta')?.value;
+  let ini = 0, fin = fechas.length;
+  if (desde) {
+    const [dy, dm, dd] = desde.split('-').map(Number);
+    const desdeDate = new Date(dy, dm - 1, dd, 0, 0, 0);
+    const k = fechas.findIndex(f => f && f >= desdeDate);
+    ini = k === -1 ? fechas.length : k;
+  }
+  if (hasta) {
+    const [hy, hm, hd] = hasta.split('-').map(Number);
+    const hastaDate = new Date(hy, hm - 1, hd, 23, 59, 59);
+    let k = fin;
+    while (k > ini && !(fechas[k-1] && fechas[k-1] <= hastaDate)) k--;
+    fin = k;
+  }
+  const labelsVis  = labels.slice(ini, fin);
+  const cvTotalVis = cvTotal.slice(ini, fin);
+  const cvMovilVis = cvMovil.slice(ini, fin);
+
   const ctx = document.getElementById('chart-olv-prog').getContext('2d');
   charts['olv-prog'] = new Chart(ctx, {
     type: 'line',
     data: {
-      labels,
+      labels: labelsVis,
       datasets: [
-        { label: 'Últimos 25 eventos', data: cvMovil, borderColor: '#475569', backgroundColor: 'rgba(71,85,105,0.08)', tension: 0.3, fill: false, pointRadius: 0, borderWidth: 1.5 },
-        { label: 'Total', data: cvTotal, borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,0.08)', tension: 0.2, fill: false, pointRadius: 0, borderWidth: 2 },
+        { label: 'Últimos 25 eventos', data: cvMovilVis, borderColor: '#475569', backgroundColor: 'rgba(71,85,105,0.08)', tension: 0.3, fill: false, pointRadius: 0, borderWidth: 1.5 },
+        { label: 'Total', data: cvTotalVis, borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,0.08)', tension: 0.2, fill: false, pointRadius: 0, borderWidth: 2 },
       ]
     },
     options: {
