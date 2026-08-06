@@ -572,7 +572,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v06/08 13:00</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v06/08 18:24</div>
     </div>
   </div>
 
@@ -1485,9 +1485,9 @@ function renderProgresiónOLV(datos) {
     data: {
       labels: labelsVis,
       datasets: [
-        { label: 'Últimos 25 eventos', data: cvMovilVis, borderColor: '#475569', backgroundColor: 'rgba(71,85,105,0.08)', tension: 0.3, fill: false, pointRadius: 0, borderWidth: 1.5 },
-        { label: 'Últimos 100 eventos', data: cvMovil2Vis, borderColor: '#64748b', backgroundColor: 'rgba(100,116,139,0.08)', tension: 0.3, fill: false, pointRadius: 0, borderWidth: 1.5 },
-        { label: 'Total', data: cvTotalVis, borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,0.08)', tension: 0.2, fill: false, pointRadius: 0, borderWidth: 2 },
+        { label: 'Últimos 25 eventos', data: cvMovilVis, borderColor: '#64748b', tension: 0.3, fill: false, pointRadius: 0, borderWidth: 1.3, borderDash: [4, 3] },
+        { label: 'Últimos 100 eventos', data: cvMovil2Vis, borderColor: '#a8b8cc', tension: 0.3, fill: false, pointRadius: 0, borderWidth: 1.8 },
+        { label: 'Total', data: cvTotalVis, borderColor: '#e2e8f0', tension: 0.2, fill: false, pointRadius: 0, borderWidth: 2.6 },
       ]
     },
     options: {
