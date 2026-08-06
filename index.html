@@ -572,7 +572,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v06/08 12:46</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v06/08 13:00</div>
     </div>
   </div>
 
@@ -1400,11 +1400,13 @@ function renderProgresiónOLV(datos) {
     return;
   }
 
-  const VENTANA = 25;
+  const VENTANA  = 25;
+  const VENTANA2 = 100;
   const labels = [];
   const fechas = [];
-  const cvTotal = [];
-  const cvMovil = [];
+  const cvTotal  = [];
+  const cvMovil  = [];
+  const cvMovil2 = [];
 
   // Calcula CV sobre un conjunto de GRUPOS (cada grupo = lista de apuestas del mismo evento)
   const calc = grupos => {
@@ -1441,14 +1443,16 @@ function renderProgresiónOLV(datos) {
     const cvT = calc(acumulado);
     cvTotal.push(cvT !== null ? parseFloat(cvT.toFixed(2)) : null);
 
-    // CV móvil (últimos VENTANA eventos) — solo a partir del evento 25
-    if (i + 1 >= VENTANA) {
-      const ventana = sorted.slice(Math.max(0, i + 1 - VENTANA), i + 1);
-      const cvM = calc(ventana);
-      cvMovil.push(cvM !== null ? parseFloat(cvM.toFixed(2)) : null);
-    } else {
-      cvMovil.push(null);
-    }
+    // CV móviles: cada ventana recién aparece cuando hay eventos suficientes
+    // para llenarla, para no dibujar tramos que en realidad son el acumulado.
+    const movil = (n, destino) => {
+      if (i + 1 >= n) {
+        const v = calc(sorted.slice(i + 1 - n, i + 1));
+        destino.push(v !== null ? parseFloat(v.toFixed(2)) : null);
+      } else destino.push(null);
+    };
+    movil(VENTANA,  cvMovil);
+    movil(VENTANA2, cvMovil2);
   });
 
   // El cálculo se hace sobre TODO el histórico —el acumulado no tendría sentido
@@ -1472,7 +1476,8 @@ function renderProgresiónOLV(datos) {
   }
   const labelsVis  = labels.slice(ini, fin);
   const cvTotalVis = cvTotal.slice(ini, fin);
-  const cvMovilVis = cvMovil.slice(ini, fin);
+  const cvMovilVis  = cvMovil.slice(ini, fin);
+  const cvMovil2Vis = cvMovil2.slice(ini, fin);
 
   const ctx = document.getElementById('chart-olv-prog').getContext('2d');
   charts['olv-prog'] = new Chart(ctx, {
@@ -1481,6 +1486,7 @@ function renderProgresiónOLV(datos) {
       labels: labelsVis,
       datasets: [
         { label: 'Últimos 25 eventos', data: cvMovilVis, borderColor: '#475569', backgroundColor: 'rgba(71,85,105,0.08)', tension: 0.3, fill: false, pointRadius: 0, borderWidth: 1.5 },
+        { label: 'Últimos 100 eventos', data: cvMovil2Vis, borderColor: '#64748b', backgroundColor: 'rgba(100,116,139,0.08)', tension: 0.3, fill: false, pointRadius: 0, borderWidth: 1.5 },
         { label: 'Total', data: cvTotalVis, borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,0.08)', tension: 0.2, fill: false, pointRadius: 0, borderWidth: 2 },
       ]
     },
