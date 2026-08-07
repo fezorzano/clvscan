@@ -572,7 +572,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v07/08 07:51</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v07/08 12:57</div>
     </div>
   </div>
 
@@ -1626,7 +1626,9 @@ function renderEventos7d() {
       },
       scales: {
         x: { ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 14 }, grid: { display: false } },
-        y: { ticks: { color: '#64748b', font: { size: 9 }, stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+        // suggestedMax deja siempre aire sobre la línea de meta (23) para que
+        // la línea y su etiqueta se lean; si los datos la superan, el eje crece.
+        y: { ticks: { color: '#64748b', font: { size: 9 }, stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true, suggestedMax: 27 }
       }
     }
   });
