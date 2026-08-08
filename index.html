@@ -572,7 +572,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v07/08 12:57</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v08/08 19:38</div>
     </div>
   </div>
 
@@ -1785,13 +1785,11 @@ async function simularEscaneo() {
         const clvOriginal = parseFloat(pendientes[0].clv); // porcentaje: 4.6 (convertido al leer)
         const clvActual   = parseFloat(o.clv);             // porcentaje: 6.6
 
-        if (clvActual - clvOriginal > 2) { // >2 puntos porcentuales
-          const stakeExtra = Math.max(0, o.stake - stakeTotalPendiente);
-          if (stakeExtra === 0) return null; // ya apostado suficiente → omitir
-          return { ...o, tipo: 'aumentar', clvOriginal, stakeExtra, stakeTotalPendiente };
-        }
-
-        return null;
+        // Sin umbral de OLV: basta con que el Kelly actual supere lo ya
+        // apostado. La diferencia es lo que falta para el tamaño correcto.
+        const stakeExtra = o.stake - stakeTotalPendiente;
+        if (stakeExtra <= 0) return null;  // ya apostado suficiente → omitir
+        return { ...o, tipo: 'aumentar', clvOriginal, stakeExtra, stakeTotalPendiente };
       }).filter(Boolean);
 
       const nuevas    = oportunidadesFiltradas.filter(o => o.tipo === 'nueva');
@@ -1877,7 +1875,9 @@ function renderOportunidades(ops, error = false) {
           <div class="card-sport">${o.deporte} · ${o.fecha}</div>
           <div class="card-evento">${o.evento}</div>
           ${o.aumentar ? `<div style="font-size:10px;color:var(--yellow);margin-top:3px;">
-            📈 OLV subió ${(clvPct - parseFloat(o.clvOriginal)).toFixed(1)}pp desde tu apuesta — considera aumentar stake
+            📈 ${(clvPct - parseFloat(o.clvOriginal)) >= 0.1
+                  ? `OLV subió ${(clvPct - parseFloat(o.clvOriginal)).toFixed(1)}pp desde tu apuesta`
+                  : `Kelly actual mayor a lo apostado`} — falta $${(o.stakeExtra||0).toLocaleString('es-CL')}
           </div>` : ''}
         </div>
         <div>
