@@ -572,7 +572,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v11/08 15:47</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v11/08 16:15</div>
     </div>
   </div>
 
@@ -2088,7 +2088,7 @@ function renderKeys(e) {
     const color = k.agotada ? '#dc2626'
                 : k.estado === 'critica' || k.estado === 'riesgo' ? '#f87171'
                 : k.estado === 'baja' ? '#cbd5e1' : '#f8fafc';
-    const pct = Math.min(100, Math.round(k.remaining / 500 * 100));
+    const pct = Math.min(100, Math.round(k.remaining / (e.creditosPorKey || 500) * 100));
     return `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
         <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);width:20px;">K${k.idx}</div>
@@ -2191,7 +2191,8 @@ window.addEventListener('load', initDashboard);  // red de seguridad
 // Parámetros reales del scanner. Se leen del Apps Script para no tener dos
 // fuentes de verdad; si la consulta falla se usan estos valores de respaldo.
 let cfgScanner = { bankroll: 700000, kellyFraccion: 0.35, topeKelly: 0.05,
-                   umbralOLV: 0.05, cuotaMax: 4.5, diasAnticip: 4 };
+                   umbralOLV: 0.05, cuotaMax: 4.5, diasAnticip: 7,
+                   escalaTopeKelly: null };
 
 async function cargarConfig() {
   try {
@@ -2201,14 +2202,22 @@ async function cargarConfig() {
   } catch(e) { console.warn('[CLV] config:', e.message); }
 }
 
-// Espejo de calcularKellyDin() del Apps Script: si allá cambia la escala,
-// hay que cambiarla acá también.
+// La escala de tope Kelly llega desde el Apps Script (endpoint obtenerConfig),
+// para no mantener dos copias que se desincronicen. El respaldo solo aplica si
+// esa consulta falla.
+const ESCALA_TOPE_RESPALDO = [
+  { hasta: 6, factor: 1.00 }, { hasta: 10, factor: 0.60 },
+  { hasta: 20, factor: 0.30 }, { hasta: 40, factor: 0.14 },
+  { hasta: 9999, factor: 0.06 },
+];
+
 function topePorCuota(cuota, topeBase) {
-  if (cuota <= 6)       return topeBase;
-  else if (cuota <= 10) return topeBase * 0.6;
-  else if (cuota <= 20) return topeBase * 0.3;
-  else if (cuota <= 40) return topeBase * 0.14;
-  else                  return topeBase * 0.06;
+  const escala = (cfgScanner.escalaTopeKelly && cfgScanner.escalaTopeKelly.length)
+    ? cfgScanner.escalaTopeKelly : ESCALA_TOPE_RESPALDO;
+  for (let i = 0; i < escala.length; i++) {
+    if (cuota <= escala[i].hasta) return topeBase * escala[i].factor;
+  }
+  return topeBase * escala[escala.length - 1].factor;
 }
 
 function calcularKelly() {
