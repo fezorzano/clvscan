@@ -572,7 +572,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v11/08 07:06</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v11/08 14:24</div>
     </div>
   </div>
 
@@ -1539,20 +1539,44 @@ function renderEventos7d() {
     base = base.filter(a => { const f = parsearFechaEventoChile(a.fechaEvento); return f && f <= hastaDate; });
   }
 
-  const diasPasados = [...new Set(base.map(a => {
-    const f = parsearFechaEventoChile(a.fechaEvento);
-    if (!f) return null;
-    return `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,'0')}-${String(f.getDate()).padStart(2,'0')}`;
-  }).filter(Boolean))].sort();
+  const ahoraChile = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
+  const claveDia = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+  // Rango CONTINUO de días, no solo aquellos con apuestas: un día sin eventos
+  // es información —muestra los huecos de actividad— y sin él el eje temporal
+  // se comprime y las barras quedan a distancias que no representan el tiempo.
+  const diasConApuesta = base.map(a => parsearFechaEventoChile(a.fechaEvento)).filter(Boolean);
+  const diasPasados = [];
+  if (diasConApuesta.length > 0) {
+    let ini;
+    if (desde) {
+      const [dy, dm, dd] = desde.split('-').map(Number);
+      ini = new Date(dy, dm - 1, dd);
+    } else {
+      ini = new Date(Math.min.apply(null, diasConApuesta));
+      ini = new Date(ini.getFullYear(), ini.getMonth(), ini.getDate());
+    }
+    let fin = new Date(Math.max.apply(null, diasConApuesta));
+    fin = new Date(fin.getFullYear(), fin.getMonth(), fin.getDate());
+    if (fin < ahoraChile) fin = new Date(ahoraChile.getFullYear(), ahoraChile.getMonth(), ahoraChile.getDate());
+    if (hasta) {
+      const [hy, hm, hd] = hasta.split('-').map(Number);
+      const lim = new Date(hy, hm - 1, hd);
+      if (lim < fin) fin = lim;
+    }
+    // Tope de seguridad: rangos muy largos generarían cientos de barras
+    let guardia = 0;
+    for (let d = new Date(ini); d <= fin && guardia < 400; d.setDate(d.getDate() + 1), guardia++) {
+      diasPasados.push(claveDia(d));
+    }
+  }
 
   // 7 días futuros desde hoy (independiente del filtro)
-  const ahoraChile = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
   const diasFuturos = [];
   for (let i = 1; i <= 7; i++) {
     const d = new Date(ahoraChile);
     d.setDate(d.getDate() + i);
-    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    diasFuturos.push(key);
+    diasFuturos.push(claveDia(d));
   }
 
   const todosDias = [...new Set([...diasPasados, ...diasFuturos])].sort();
