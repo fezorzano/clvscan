@@ -572,7 +572,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v11/08 14:24</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v11/08 15:47</div>
     </div>
   </div>
 
@@ -2064,57 +2064,54 @@ function renderKeys(e) {
   panel.style.display = 'block';
 
   const colorGlobal = e.alcanzaTotal ? '#f8fafc' : '#f87171';
-  const msgGlobal   = e.alcanzaTotal
-    ? `✅ Cobertura completa — ${e.escaneosTotal} escaneos posibles vs ${e.escaneosTotalesNecesarios} necesarios (${e.diasRest} días)`
-    : `🚨 RIESGO — solo ${e.escaneosTotal} escaneos posibles vs ${e.escaneosTotalesNecesarios} necesarios`;
+  const alcanza = (n) => n >= e.escaneosTotalesNecesarios;
 
-  // Proyección del sistema por fecha crítica
-  const proyHtml = (e.proyeccion || []).map(p => {
-    const color = p.ok ? '#f8fafc' : '#f87171';
-    const icono = p.ok ? '✅' : '⚠️';
-    return `
-      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
-        <div style="font-family:var(--font-mono);font-size:10px;color:${color};">${icono} ${p.label}</div>
-        <div style="font-size:10px;color:${color};font-family:var(--font-mono);">${p.keysActivas} keys activas · ${p.escaneosPos} escaneos posibles</div>
-      </div>`;
-  }).join('');
+  // Resumen en tres líneas: lo que hace falta hasta el reset, y cuántos
+  // escaneos alcanzan según el consumo máximo (peor caso) y el promedio.
+  // Todas las keys resetean el día 1, así que hay una sola fecha y no tiene
+  // sentido mostrarla junto a cada barra.
+  const fila = (etiqueta, valor, detalle, ok) => `
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;">
+      <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono);">${etiqueta}</div>
+      <div style="font-size:11px;color:${ok === false ? '#f87171' : '#f8fafc'};font-family:var(--font-mono);">
+        ${valor}<span style="color:var(--muted);font-size:9px;"> ${detalle}</span>
+      </div>
+    </div>`;
 
-  // Detalle compacto por key (solo barra + requests + reset)
+  const resumen =
+    fila('Escaneos necesarios', e.escaneosTotalesNecesarios, `en ${e.diasRest} días`) +
+    fila('Alcanzan (peor caso)', e.escaneosPeor, `a ${e.REQ_POR_ESCANEO} req`, alcanza(e.escaneosPeor)) +
+    fila('Alcanzan (promedio)',  e.escaneosProm, `a ${e.REQ_PROMEDIO} req`, alcanza(e.escaneosProm));
+
+  // Detalle por key: solo barra y créditos restantes
   const keysHtml = e.keys.map(k => {
-    const color = k.estado === 'ok'      ? '#f8fafc'
-                : k.estado === 'baja'    ? '#cbd5e1'
-                : k.estado === 'riesgo'  ? '#f87171'
-                : k.estado === 'critica' ? '#f87171'
-                : '#dc2626';
-    const pct       = Math.min(100, Math.round(k.remaining / 500 * 100));
-    const meses     = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-    const resetDate = k.resetStr ? new Date(k.resetStr) : null;
-    const ahora     = new Date();
-    // Si ya pasó la fecha de reset, la key debería haberse reseteado — no mostrar como agotada
-    const yaReseteada = resetDate && ahora > resetDate;
-    if (yaReseteada && k.agotada) k = { ...k, agotada: false, remaining: 500, estado: 'ok' };
-    const resetInfo = resetDate
-      ? ` · reset ${String(resetDate.getDate()).padStart(2,'0')}-${meses[resetDate.getMonth()]}`
-      : '';
+    const color = k.agotada ? '#dc2626'
+                : k.estado === 'critica' || k.estado === 'riesgo' ? '#f87171'
+                : k.estado === 'baja' ? '#cbd5e1' : '#f8fafc';
+    const pct = Math.min(100, Math.round(k.remaining / 500 * 100));
     return `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
         <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);width:20px;">K${k.idx}</div>
         <div style="flex:1;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;">
           <div style="width:${pct}%;height:100%;background:${color};border-radius:2px;"></div>
         </div>
-        <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);white-space:nowrap;">
-          ${k.agotada ? 'AGOTADA' : (k.sinDato ? 'sin medir' : k.remaining + ' req')}${resetInfo}
+        <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);white-space:nowrap;width:62px;text-align:right;">
+          ${k.agotada ? 'AGOTADA' : (k.sinDato ? 'sin medir' : k.remaining + ' req')}
         </div>
       </div>`;
   }).join('');
 
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const rd = e.resetStr ? new Date(e.resetStr + 'T00:00:00') : null;
+  const resetTxt = rd ? `${rd.getDate()}-${meses[rd.getMonth()]}` : '—';
+
   container.innerHTML = `
     <div style="background:var(--surface);border:1px solid ${colorGlobal}44;border-radius:10px;padding:12px;">
-      <div style="font-size:11px;color:${colorGlobal};font-family:var(--font-mono);margin-bottom:10px;">${msgGlobal}</div>
-      <div style="margin-bottom:12px;">${proyHtml}</div>
+      <div style="margin-bottom:10px;">${resumen}</div>
       <div style="border-top:1px solid var(--border);padding-top:10px;">${keysHtml}</div>
       <div style="font-size:9px;color:var(--muted);margin-top:8px;font-family:var(--font-mono);">
-        Keys activas: ${e.keysActivas}/${e.totalKeys} · Umbral: ${e.REQ_POR_ESCANEO} req/escaneo · Hoy: ${horariosDeHoy()}
+        ${e.creditosDisp.toLocaleString('es-CL')} créditos · ${e.keysActivas}/${e.totalKeys} keys · reset ${resetTxt}<br>
+        hoy ${horariosDeHoy()}
       </div>
     </div>`;
 }
