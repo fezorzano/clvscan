@@ -1,0 +1,6 @@
+# Dashboard privado: no debe aparecer en buscadores.
+# Esto no bloquea el acceso a quien tenga el enlace — solo pide a los
+# rastreadores que no lo indexen. Para protección real hace falta
+# autenticación delante del sitio (por ejemplo Cloudflare Access).
+User-agent: *
+Disallow: /
