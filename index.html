@@ -572,7 +572,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v11/08 16:15</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v11/08 21:13</div>
     </div>
   </div>
 
@@ -1708,13 +1708,15 @@ async function dispararEscaneoReal() {
 
 // ==================== PRÓXIMO ESCANEO ====================
 const HORARIOS_POR_DIA = {
+  // Solo el de las 21 tiene el minuto fijado (nearMinute 30); los demás caen
+  // en un minuto aleatorio de su hora, así que se muestran en punto.
   0: [7*60, 10*60, 13*60, 16*60, 19*60, 21*60+30], // Dom
-  1: [7*60, 11*60, 15*60, 19*60, 21*60+30],          // Lun
-  2: [7*60, 11*60, 15*60, 19*60, 21*60+30],          // Mar
-  3: [7*60, 11*60, 15*60, 19*60, 21*60+30],          // Mié
-  4: [7*60, 11*60, 15*60, 19*60, 21*60+30],          // Jue
-  5: [7*60, 13*60, 16*60, 19*60, 21*60+30],          // Vie
-  6: [7*60, 10*60, 13*60, 16*60, 19*60, 21*60+30],   // Sáb
+  1: [7*60, 11*60, 15*60, 19*60, 21*60+30],        // Lun
+  2: [7*60, 11*60, 15*60, 19*60, 21*60+30],        // Mar
+  3: [7*60, 11*60, 15*60, 19*60, 21*60+30],        // Mié
+  4: [7*60, 11*60, 15*60, 19*60, 21*60+30],        // Jue
+  5: [7*60, 13*60, 16*60, 19*60, 21*60+30],        // Vie
+  6: [7*60, 10*60, 13*60, 16*60, 19*60, 21*60+30], // Sáb
 };
 
 let ultimoTsEscaneo = null; // se actualiza al cargar oportunidades
