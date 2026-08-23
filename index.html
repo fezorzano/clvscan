@@ -985,6 +985,15 @@ function limpiarFechas() {
   setFechaAtajo(-1, document.getElementById('btn-fecha-todo'));
 }
 
+// El Tracker guarda una fila por APUESTA, y un mismo evento puede tener más de
+// una cuando el stake Kelly sube y se refuerza la posición. Para contar hay que
+// deduplicar por evento+fecha: si no, un partido reforzado pesa doble en los
+// contadores y en cualquier test de calibración. Los montos (stake, P&L) sí se
+// suman sobre todas las filas — ahí cada apuesta es plata distinta.
+function contarEventos(arr) {
+  return new Set(arr.map(a => `${a.evento}|${a.fechaEvento}`)).size;
+}
+
 function renderAnalytics() {
   if (!apuestas || apuestas.length === 0) {
     cargarTrackerDesdeSheets().then(() => renderAnalytics());
@@ -1269,7 +1278,7 @@ function renderBarrasOLV(datos) {
 
   const plReal  = rangos.map(r => datos.filter(a => parseFloat(a.clv) >= r.min && parseFloat(a.clv) < r.max).reduce((s,a) => s + a.pl, 0));
   const plTeor  = rangos.map(r => datos.filter(a => parseFloat(a.clv) >= r.min && parseFloat(a.clv) < r.max).reduce((s,a) => s + (parseFloat(a.ev)||0)*a.stake/100, 0));
-  const counts  = rangos.map(r => datos.filter(a => parseFloat(a.clv) >= r.min && parseFloat(a.clv) < r.max).length);
+  const counts  = rangos.map(r => contarEventos(datos.filter(a => parseFloat(a.clv) >= r.min && parseFloat(a.clv) < r.max)));
 
   const ctx2 = document.getElementById('chart-olv').getContext('2d');
   charts['olv'] = new Chart(ctx2, {
@@ -1310,7 +1319,7 @@ function renderBarrasCuota(datos) {
 
   const plReal  = rangos.map(r => datos.filter(a => a.coolbet >= r.min && a.coolbet < r.max).reduce((s,a) => s + a.pl, 0));
   const plTeor  = rangos.map(r => datos.filter(a => a.coolbet >= r.min && a.coolbet < r.max).reduce((s,a) => s + (parseFloat(a.ev)||0)*a.stake/100, 0));
-  const counts  = rangos.map(r => datos.filter(a => a.coolbet >= r.min && a.coolbet < r.max).length);
+  const counts  = rangos.map(r => contarEventos(datos.filter(a => a.coolbet >= r.min && a.coolbet < r.max)));
 
   const ctx3 = document.getElementById('chart-cuota').getContext('2d');
   charts['cuota'] = new Chart(ctx3, {
@@ -1342,8 +1351,8 @@ function renderTablaLiga(datos) {
   const ligas = {};
   datos.forEach(a => {
     const liga = a.deporte || 'Otros';
-    if (!ligas[liga]) ligas[liga] = { apuestas: 0, volumen: 0, plReal: 0, plTeor: 0, olvSum: 0 };
-    ligas[liga].apuestas++;
+    if (!ligas[liga]) ligas[liga] = { eventos: new Set(), volumen: 0, plReal: 0, plTeor: 0, olvSum: 0 };
+    ligas[liga].eventos.add(`${a.evento}|${a.fechaEvento}`);
     ligas[liga].volumen += a.stake;
     ligas[liga].plReal  += a.pl;
     ligas[liga].plTeor  += (parseFloat(a.ev)||0) * a.stake / 100;
@@ -1351,7 +1360,7 @@ function renderTablaLiga(datos) {
   });
 
   const rows = Object.entries(ligas)
-    .map(([liga, d]) => ({ liga, ...d, olv: d.volumen > 0 ? d.olvSum / d.volumen : 0 }))
+    .map(([liga, d]) => ({ liga, ...d, eventos: d.eventos.size, olv: d.volumen > 0 ? d.olvSum / d.volumen : 0 }))
     .sort((a, b) => b.plReal - a.plReal);
 
   const html = `
@@ -1366,7 +1375,7 @@ function renderTablaLiga(datos) {
       ${rows.map(r => `
         <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
           <td style="padding:6px 4px;color:var(--text2);font-size:10px;">${r.liga.replace(/⚽/g,'').trim()}</td>
-          <td style="padding:6px 4px;text-align:center;color:var(--muted);">${r.apuestas}</td>
+          <td style="padding:6px 4px;text-align:center;color:var(--muted);">${r.eventos}</td>
           <td style="padding:6px 4px;text-align:center;color:var(--green);">+${r.olv.toFixed(1).replace('.',',')}%</td>
           <td style="padding:6px 4px;text-align:center;color:${r.plReal >= 0 ? 'var(--green)' : 'var(--red)'};">${r.plReal >= 0 ? '+' : ''}$${Math.round(r.plReal).toLocaleString('es-CL')}</td>
           <td style="padding:6px 4px;text-align:center;color:#94a3b8;">+$${Math.round(r.plTeor).toLocaleString('es-CL')}</td>
