@@ -575,7 +575,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v23/08 09:14</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v06/09 19:40</div>
     </div>
   </div>
 
@@ -810,6 +810,7 @@
 
     <!-- 0. Waterfall saldo -->
     <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <div id="chip-filtro"></div>
       <canvas id="chart-waterfall" height="160"></canvas>
     </div>
 
@@ -994,6 +995,48 @@ function contarEventos(arr) {
   return new Set(arr.map(a => `${a.evento}|${a.fechaEvento}`)).size;
 }
 
+// ══════════ FILTRO CRUZADO ══════════
+// Al pinchar una barra, todos los gráficos se recalculan con ese subconjunto.
+// Un solo filtro activo a la vez: encadenar varios sobre una muestra de este
+// tamaño deja bloques de 3 o 4 apuestas que no significan nada, que es
+// justamente el error que este panel debería ayudar a evitar.
+let filtroCruzado = null;
+
+function aplicarFiltroCruzado(f) {
+  filtroCruzado = (filtroCruzado && filtroCruzado.label === f.label) ? null : f;  // repinchar = quitar
+  renderAnalytics();
+}
+function limpiarFiltroCruzado() { filtroCruzado = null; renderAnalytics(); }
+
+function filtrarCruzado(datos) {
+  if (!filtroCruzado) return datos;
+  const f = filtroCruzado;
+  if (f.campo === 'liga') return datos.filter(a => (a.deporte || 'Otros') === f.valor);
+  return datos.filter(a => {
+    const v = f.campo === 'clv' ? parseFloat(a.clv) : a.coolbet;
+    return v >= f.min && v < f.max;
+  });
+}
+
+function pintarChipFiltro(n) {
+  const cont = document.getElementById('chip-filtro');
+  if (!cont) return;
+  cont.innerHTML = !filtroCruzado ? '' :
+    '<div style="display:flex;align-items:center;gap:8px;padding:6px 12px;margin-bottom:10px;'
+  + 'background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.35);border-radius:14px;font-size:11px;">'
+  + '<span style="color:#93c5fd;">Filtrado: <b>' + filtroCruzado.titulo + '</b> · ' + n + ' apuesta(s)</span>'
+  + '<span onclick="limpiarFiltroCruzado()" style="cursor:pointer;color:#f87171;font-weight:700;">✕ quitar</span></div>';
+}
+
+function clickRangos(rangos, campo, titulo) {
+  return (evt, elems) => {
+    if (!elems || !elems.length) return;
+    const r = rangos[elems[0].index];
+    aplicarFiltroCruzado({ campo, min: r.min, max: r.max,
+                           label: campo + r.label, titulo: titulo + ' ' + r.label });
+  };
+}
+
 function renderAnalytics() {
   if (!apuestas || apuestas.length === 0) {
     cargarTrackerDesdeSheets().then(() => renderAnalytics());
@@ -1022,6 +1065,9 @@ function renderAnalytics() {
       return f && f <= hastaDate;
     });
   }
+
+  datos = filtrarCruzado(datos);
+  pintarChipFiltro(datos.length);
 
   renderWaterfall(datos);
   renderCurvaPL(datos);
@@ -1290,6 +1336,7 @@ function renderBarrasOLV(datos) {
         { label: 'P&L Teórico', data: plTeor.map(Math.round), backgroundColor: '#94a3b8' },
       ]
     },
+    onClick: clickRangos(rangos, 'clv', 'OLV'),
     options: {
       responsive: true,
       interaction: { mode: 'index', intersect: false },
@@ -1331,6 +1378,7 @@ function renderBarrasCuota(datos) {
         { label: 'P&L Teórico', data: plTeor.map(Math.round), backgroundColor: '#94a3b8' },
       ]
     },
+    onClick: clickRangos(rangos, 'coolbet', 'cuota'),
     options: {
       responsive: true,
       interaction: { mode: 'index', intersect: false },
