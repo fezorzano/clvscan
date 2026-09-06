@@ -575,7 +575,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v06/09 19:40</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v06/09 20:15</div>
     </div>
   </div>
 
@@ -995,43 +995,82 @@ function contarEventos(arr) {
   return new Set(arr.map(a => `${a.evento}|${a.fechaEvento}`)).size;
 }
 
-// ══════════ FILTRO CRUZADO ══════════
-// Al pinchar una barra, todos los gráficos se recalculan con ese subconjunto.
-// Un solo filtro activo a la vez: encadenar varios sobre una muestra de este
-// tamaño deja bloques de 3 o 4 apuestas que no significan nada, que es
-// justamente el error que este panel debería ayudar a evitar.
-let filtroCruzado = null;
+// ══════════ FILTROS CRUZADOS ══════════
+// Un filtro por dimensión (cuota, OLV, liga); las dimensiones se combinan con
+// Y. Así se puede pedir "cuota <4,5 Y OLV >=5%" sin permitir apilar cortes
+// infinitos sobre la misma variable.
+// En móvil pinchar una barra es poco fiable, así que los botones de arriba
+// hacen lo mismo con un área táctil decente.
+let filtrosCruzados = {};
 
 function aplicarFiltroCruzado(f) {
-  filtroCruzado = (filtroCruzado && filtroCruzado.label === f.label) ? null : f;  // repinchar = quitar
+  const actual = filtrosCruzados[f.campo];
+  if (actual && actual.label === f.label) delete filtrosCruzados[f.campo];  // repinchar = quitar
+  else filtrosCruzados[f.campo] = f;
   renderAnalytics();
 }
-function limpiarFiltroCruzado() { filtroCruzado = null; renderAnalytics(); }
+function quitarFiltro(campo) { delete filtrosCruzados[campo]; renderAnalytics(); }
+function limpiarFiltroCruzado() { filtrosCruzados = {}; renderAnalytics(); }
+
+function presetRegimen() {
+  filtrosCruzados = {
+    coolbet: { campo:'coolbet', min:0, max:4.5,  label:'coolbet<4.5', titulo:'cuota <4,5' },
+    clv:     { campo:'clv',     min:5, max:999,  label:'clv>=5',      titulo:'OLV ≥5%' },
+  };
+  renderAnalytics();
+}
 
 function filtrarCruzado(datos) {
-  if (!filtroCruzado) return datos;
-  const f = filtroCruzado;
-  if (f.campo === 'liga') return datos.filter(a => (a.deporte || 'Otros') === f.valor);
-  return datos.filter(a => {
-    const v = f.campo === 'clv' ? parseFloat(a.clv) : a.coolbet;
-    return v >= f.min && v < f.max;
-  });
+  return Object.keys(filtrosCruzados).reduce((d, k) => {
+    const f = filtrosCruzados[k];
+    if (f.campo === 'liga') return d.filter(a => (a.deporte || 'Otros') === f.valor);
+    return d.filter(a => {
+      const v = f.campo === 'clv' ? parseFloat(a.clv) : a.coolbet;
+      return v >= f.min && v < f.max;
+    });
+  }, datos);
 }
 
 function pintarChipFiltro(n) {
   const cont = document.getElementById('chip-filtro');
   if (!cont) return;
-  cont.innerHTML = !filtroCruzado ? '' :
-    '<div style="display:flex;align-items:center;gap:8px;padding:6px 12px;margin-bottom:10px;'
-  + 'background:rgba(96,165,250,0.12);border:1px solid rgba(96,165,250,0.35);border-radius:14px;font-size:11px;">'
-  + '<span style="color:#93c5fd;">Filtrado: <b>' + filtroCruzado.titulo + '</b> · ' + n + ' apuesta(s)</span>'
-  + '<span onclick="limpiarFiltroCruzado()" style="cursor:pointer;color:#f87171;font-weight:700;">✕ quitar</span></div>';
+  const activos = Object.keys(filtrosCruzados);
+  const btn = (txt, fn, on) =>
+    `<span onclick="${fn}" style="cursor:pointer;padding:5px 10px;border-radius:12px;font-size:11px;white-space:nowrap;`
+    + `background:${on?'rgba(96,165,250,0.22)':'rgba(148,163,184,0.10)'};`
+    + `border:1px solid ${on?'rgba(96,165,250,0.5)':'rgba(148,163,184,0.25)'};`
+    + `color:${on?'#93c5fd':'#94a3b8'};">${txt}</span>`;
+
+  const esCuota = filtrosCruzados.coolbet && filtrosCruzados.coolbet.label === 'coolbet<4.5';
+  const esOlv   = filtrosCruzados.clv && filtrosCruzados.clv.label === 'clv>=5';
+
+  let html = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">`
+    + btn('cuota &lt;4,5', "aplicarFiltroCruzado({campo:'coolbet',min:0,max:4.5,label:'coolbet&lt;4.5',titulo:'cuota &lt;4,5'})", esCuota)
+    + btn('OLV ≥5%',      "aplicarFiltroCruzado({campo:'clv',min:5,max:999,label:'clv&gt;=5',titulo:'OLV ≥5%'})", esOlv)
+    + btn('régimen actual', 'presetRegimen()', esCuota && esOlv)
+    + (activos.length ? btn('✕ limpiar', 'limpiarFiltroCruzado()', false) : '')
+    + `</div>`;
+
+  if (activos.length) {
+    const aviso = n < 25 ? ` <b style="color:#fbbf24;">— muestra chica, cuidado con las conclusiones</b>` : '';
+    html += `<div style="padding:6px 12px;margin-bottom:10px;background:rgba(96,165,250,0.12);`
+          + `border:1px solid rgba(96,165,250,0.35);border-radius:14px;font-size:11px;color:#93c5fd;">`
+          + activos.map(k => `<b>${filtrosCruzados[k].titulo}</b> <span onclick="quitarFiltro('${k}')" style="cursor:pointer;color:#f87171;">✕</span>`).join(' · ')
+          + ` · ${n} apuesta(s)${aviso}</div>`;
+  }
+  cont.innerHTML = html;
 }
 
+// En móvil el toque rara vez cae exactamente sobre la barra, así que si
+// Chart.js no devuelve elementos se reintenta por índice de columna.
 function clickRangos(rangos, campo, titulo) {
-  return (evt, elems) => {
-    if (!elems || !elems.length) return;
-    const r = rangos[elems[0].index];
+  return (evt, elems, chart) => {
+    let e = elems;
+    if ((!e || !e.length) && chart) {
+      e = chart.getElementsAtEventForMode(evt, 'index', { intersect: false }, true);
+    }
+    if (!e || !e.length) return;
+    const r = rangos[e[0].index];
     aplicarFiltroCruzado({ campo, min: r.min, max: r.max,
                            label: campo + r.label, titulo: titulo + ' ' + r.label });
   };
