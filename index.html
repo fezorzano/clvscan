@@ -575,7 +575,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v06/09 20:40</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v06/09 21:05</div>
     </div>
   </div>
 
@@ -2625,6 +2625,11 @@ function actualizarPLSummary(resumen) {
       return f && f <= hastaDate;
     });
   }
+
+  // Además del filtro de fechas, aplicar el filtro cruzado del botón. Las
+  // filas 1 y 2 (saldo Coolbet, en juego) siguen siendo globales a propósito:
+  // son el estado real de la cuenta y no dependen de qué subconjunto mires.
+  cerradas = filtrarCruzado(cerradas);
 
   const volumenResuelto = cerradas.reduce((s, a) => s + a.stake, 0);
   const plReal          = cerradas.reduce((s, a) => s + a.pl, 0);
