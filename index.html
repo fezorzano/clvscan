@@ -575,7 +575,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v06/09 20:15</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v06/09 20:40</div>
     </div>
   </div>
 
@@ -808,9 +808,10 @@
     <input type="date" id="analytics-desde" style="display:none;">
     <input type="date" id="analytics-hasta" style="display:none;">
 
+    <div id="chip-filtro"></div>
+
     <!-- 0. Waterfall saldo -->
     <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
-      <div id="chip-filtro"></div>
       <canvas id="chart-waterfall" height="160"></canvas>
     </div>
 
@@ -1035,28 +1036,22 @@ function pintarChipFiltro(n) {
   const cont = document.getElementById('chip-filtro');
   if (!cont) return;
   const activos = Object.keys(filtrosCruzados);
-  const btn = (txt, fn, on) =>
-    `<span onclick="${fn}" style="cursor:pointer;padding:5px 10px;border-radius:12px;font-size:11px;white-space:nowrap;`
-    + `background:${on?'rgba(96,165,250,0.22)':'rgba(148,163,184,0.10)'};`
-    + `border:1px solid ${on?'rgba(96,165,250,0.5)':'rgba(148,163,184,0.25)'};`
-    + `color:${on?'#93c5fd':'#94a3b8'};">${txt}</span>`;
+  const on = filtrosCruzados.coolbet && filtrosCruzados.clv;
 
-  const esCuota = filtrosCruzados.coolbet && filtrosCruzados.coolbet.label === 'coolbet<4.5';
-  const esOlv   = filtrosCruzados.clv && filtrosCruzados.clv.label === 'clv>=5';
-
-  let html = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">`
-    + btn('cuota &lt;4,5', "aplicarFiltroCruzado({campo:'coolbet',min:0,max:4.5,label:'coolbet&lt;4.5',titulo:'cuota &lt;4,5'})", esCuota)
-    + btn('OLV ≥5%',      "aplicarFiltroCruzado({campo:'clv',min:5,max:999,label:'clv&gt;=5',titulo:'OLV ≥5%'})", esOlv)
-    + btn('régimen actual', 'presetRegimen()', esCuota && esOlv)
-    + (activos.length ? btn('✕ limpiar', 'limpiarFiltroCruzado()', false) : '')
-    + `</div>`;
+  let html = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">'
+    + '<span onclick="' + (on ? 'limpiarFiltroCruzado()' : 'presetRegimen()') + '"'
+    + ' style="cursor:pointer;padding:7px 14px;border-radius:12px;font-size:12px;white-space:nowrap;'
+    + 'background:' + (on ? 'rgba(96,165,250,0.22)' : 'rgba(148,163,184,0.10)') + ';'
+    + 'border:1px solid ' + (on ? 'rgba(96,165,250,0.5)' : 'rgba(148,163,184,0.25)') + ';'
+    + 'color:' + (on ? '#93c5fd' : '#94a3b8') + ';">\u2264 4,5x &nbsp;\u2265 5%</span>'
+    + '</div>';
 
   if (activos.length) {
-    const aviso = n < 25 ? ` <b style="color:#fbbf24;">— muestra chica, cuidado con las conclusiones</b>` : '';
-    html += `<div style="padding:6px 12px;margin-bottom:10px;background:rgba(96,165,250,0.12);`
-          + `border:1px solid rgba(96,165,250,0.35);border-radius:14px;font-size:11px;color:#93c5fd;">`
-          + activos.map(k => `<b>${filtrosCruzados[k].titulo}</b> <span onclick="quitarFiltro('${k}')" style="cursor:pointer;color:#f87171;">✕</span>`).join(' · ')
-          + ` · ${n} apuesta(s)${aviso}</div>`;
+    const aviso = n < 25 ? ' <b style="color:#fbbf24;">\u2014 muestra chica, cuidado con las conclusiones</b>' : '';
+    html += '<div style="padding:6px 12px;margin-bottom:10px;background:rgba(96,165,250,0.12);'
+          + 'border:1px solid rgba(96,165,250,0.35);border-radius:14px;font-size:11px;color:#93c5fd;">'
+          + activos.map(k => '<b>' + filtrosCruzados[k].titulo + '</b>').join(' \u00b7 ')
+          + ' \u00b7 ' + n + ' apuesta(s)' + aviso + '</div>';
   }
   cont.innerHTML = html;
 }
