@@ -575,7 +575,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v09/09 08:18</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v09/09 16:20</div>
     </div>
   </div>
 
@@ -717,7 +717,8 @@
       <button class="filter-btn" id="btn-fecha-m5" onclick="setFechaAtajo(null, this, 5)">5 meses</button>
       <button class="filter-btn" id="btn-fecha-m6" onclick="setFechaAtajo(null, this, 6)">6 meses</button>
     </div>
-    <div style="margin-top:8px;">
+    <div style="margin-top:8px;display:flex;gap:6px;">
+      <button class="filter-btn" id="btn-cuota" onclick="toggleCuota()">&le; 4,5x</button>
       <button class="filter-btn" id="btn-regimen" onclick="toggleRegimen()">&le; 4,5x &nbsp;&ge; 5%</button>
     </div>
     <div id="analytics-periodo" style="text-align:center;font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-top:6px;margin-bottom:12px;"></div>
@@ -1033,19 +1034,30 @@ function filtrarCruzado(datos) {
   }, datos);
 }
 
-function toggleRegimen() {
-  if (filtrosCruzados.coolbet && filtrosCruzados.clv) limpiarFiltroCruzado();
-  else presetRegimen();
+const F_CUOTA = { campo:'coolbet', min:0, max:4.5, label:'coolbet<4.5', titulo:'cuota \u22644,5' };
+const F_OLV   = { campo:'clv',     min:5, max:999, label:'clv>=5',      titulo:'OLV \u22655%'   };
+
+function toggleCuota() {
+  // Solo cuota: si ya estaba el régimen completo, esto quita el filtro de OLV
+  const solo = filtrosCruzados.coolbet && !filtrosCruzados.clv;
+  filtrosCruzados = solo ? {} : { coolbet: F_CUOTA };
+  renderAnalytics();
 }
 
-// Sin mensajes: el único indicador es que el botón se ponga verde, igual que
-// los de fecha. Usa la clase .filter-btn.active para heredar exactamente el
-// mismo estilo en vez de duplicar colores.
+function toggleRegimen() {
+  const ambos = filtrosCruzados.coolbet && filtrosCruzados.clv;
+  filtrosCruzados = ambos ? {} : { coolbet: F_CUOTA, clv: F_OLV };
+  renderAnalytics();
+}
+
+// Sin mensajes: el único indicador es qué botón queda verde. Los dos son
+// excluyentes entre sí, así que nunca hay ambigüedad sobre qué está aplicado.
 function pintarChipFiltro(n) {
-  const b = document.getElementById('btn-regimen');
-  if (!b) return;
-  const on = !!(filtrosCruzados.coolbet && filtrosCruzados.clv);
-  b.classList.toggle('active', on);
+  const c = filtrosCruzados.coolbet, o = filtrosCruzados.clv;
+  const bc = document.getElementById('btn-cuota');
+  const br = document.getElementById('btn-regimen');
+  if (bc) bc.classList.toggle('active', !!c && !o);
+  if (br) br.classList.toggle('active', !!c && !!o);
 }
 
 // En móvil el toque rara vez cae exactamente sobre la barra, así que si
