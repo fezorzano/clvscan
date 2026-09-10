@@ -575,7 +575,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v09/09 16:28</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v10/09 16:27</div>
     </div>
   </div>
 
@@ -1113,7 +1113,7 @@ function renderAnalytics() {
   renderBarrasCuota(datos);
   renderTablaLiga(datos);
   renderProgresiónOLV(datos);
-  renderEventos7d();
+  renderEventos7d(datos);
   // Actualizar cuadrantes filtrados del summary
   actualizarPLSummary(null);
 }
@@ -1475,8 +1475,11 @@ function renderTablaLiga(datos) {
 function renderProgresiónOLV(datos) {
   destroyChart('olv-prog');
 
-  // Usar TODAS las apuestas resueltas, agrupadas por evento único (evento+fechaEvento)
-  const cerradas = apuestas.filter(a => a.resultado !== 'pendiente');
+  // Respeta el filtro cruzado: la pregunta que responde el CV es cuántos
+  // eventos faltan para que el P&L sea informativo, y eso solo tiene sentido
+  // sobre el régimen que se está midiendo. Mezclar las cuotas altas, con
+  // mucha más varianza, contamina la curva.
+  const cerradas = datos.filter(a => a.resultado !== 'pendiente');
   const sortedApuestas = [...cerradas].sort((a, b) => {
     const fa = parsearFechaEventoChile(a.fechaEvento);
     const fb = parsearFechaEventoChile(b.fechaEvento);
@@ -1608,15 +1611,18 @@ function renderProgresiónOLV(datos) {
 }
 
 // 6. Eventos — ventana móvil 7 días + 7 próximos
-function renderEventos7d() {
+function renderEventos7d(datos) {
   destroyChart('eventos-7d');
 
   const desde = document.getElementById('analytics-desde')?.value;
   const hasta  = document.getElementById('analytics-hasta')?.value;
 
-  // Mapear TODAS las apuestas a su día (para la ventana móvil)
+  // El universo es el conjunto filtrado, no todas las apuestas: si el panel
+  // está mostrando el régimen ≤4,5x ≥5%, la ventana móvil de 7 días tiene que
+  // contar esos eventos y no otros.
+  const universo = filtrarCruzado(apuestas);
   const porDia = {};
-  apuestas.forEach(a => {
+  universo.forEach(a => {
     const f = parsearFechaEventoChile(a.fechaEvento);
     if (!f) return;
     const key = `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,'0')}-${String(f.getDate()).padStart(2,'0')}`;
@@ -1625,7 +1631,7 @@ function renderEventos7d() {
   });
 
   // Días del período filtrado (pasados/presentes)
-  let base = [...apuestas];
+  let base = [...universo];
   if (desde) {
     const [dy, dm, dd] = desde.split('-').map(Number);
     const desdeDate = new Date(dy, dm - 1, dd, 0, 0, 0);
