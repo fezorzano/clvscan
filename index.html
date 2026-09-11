@@ -575,7 +575,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v10/09 16:27</div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v11/09 18:44 <span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -2247,7 +2247,7 @@ let _initHecho = false;
 async function fetchConTimeout(url, ms = 25000) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), ms);
-  try { return await fetch(url, { signal: ctrl.signal }); }
+  try { return await fetch(url, { signal: ctrl.signal, redirect: 'follow' }); }
   finally { clearTimeout(t); }
 }
 
@@ -2266,6 +2266,19 @@ async function cargarTodo() {
   if (resp.tsEscaneo) ultimoTsEscaneo = resp.tsEscaneo;
 }
 
+// Deja a la vista cuánto tardó la carga y por qué vía. Si dice "RESPALDO"
+// significa que la llamada única falló y se hicieron tres más en cadena,
+// pagando cuatro veces la redirección del Web App. Sin esto, ese fallo es
+// invisible desde el celular.
+function marcarDiagCarga(t0, via) {
+  const el = document.getElementById('diag-carga');
+  if (!el) return;
+  const seg = ((Date.now() - t0) / 1000).toFixed(1);
+  const mal = via.indexOf('RESPALDO') === 0 || seg > 6;
+  el.innerHTML = ' · <span style="color:' + (mal ? '#f87171' : 'var(--muted)') + ';">'
+               + seg + 's ' + via + '</span>';
+}
+
 async function initDashboard() {
   if (_initHecho) return;
   _initHecho = true;
@@ -2274,9 +2287,11 @@ async function initDashboard() {
 
   try {
     await cargarTodo();
+    marcarDiagCarga(t0, 'única');
     console.log(`[CLV] carga única OK en ${((Date.now()-t0)/1000).toFixed(1)}s —`,
                 apuestas.length, 'apuestas ·', movimientos.length, 'movimientos');
   } catch(e) {
+    marcarDiagCarga(t0, 'RESPALDO ×4');
     console.warn('[CLV] carga única falló (' + e.message + '), usando consultas separadas');
     await Promise.allSettled([cargarTrackerDesdeSheets()]);
     await Promise.allSettled([cargarMovimientos()]);
