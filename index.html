@@ -575,7 +575,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v12/09 12:48 <span id="diag-carga"></span></div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v12/09 17:22 <span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -922,6 +922,12 @@ function parsearFechaEventoChile(str) {
       const min  = parseInt(matchSinAnio[4]);
       return new Date(2026, mes - 1, dia, hora, min);
     }
+    // Respaldo: si la celda quedó guardada como fecha real de Sheets en vez de
+    // texto, llega como "Sat Sep 12 2026 13:00:00 GMT-0300" y ninguno de los
+    // dos patrones calza. Antes eso devolvía null y la apuesta desaparecía del
+    // gráfico sin aviso.
+    const nativa = new Date(str);
+    if (!isNaN(nativa.getTime())) return nativa;
     return null;
   } catch(e) { return null; }
 }
@@ -1295,9 +1301,16 @@ function renderCurvaPL(datos) {
   // de semana cargado ocupaba el mismo ancho que dos semanas flojas. Agrupando
   // por día la pendiente pasa a ser comparable entre períodos.
   const porDia = {};
+  let sinFecha = 0, plSinFecha = 0;
   sorted.forEach(a => {
     const f = parsearFechaEventoChile(a.fechaEvento);
-    if (!f) return;
+    if (!f) {
+      // No descartar en silencio: si una fecha no se puede leer, la apuesta
+      // igual existe y su P&L es real. Se avisa en consola y se suma al primer
+      // día para que el acumulado final siga cuadrando con los KPIs.
+      sinFecha++; plSinFecha += a.pl;
+      return;
+    }
     const k = `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,'0')}-${String(f.getDate()).padStart(2,'0')}`;
     if (!porDia[k]) porDia[k] = { pl: 0, teor: 0, n: 0, f };
     porDia[k].pl   += a.pl;
@@ -1309,12 +1322,24 @@ function renderCurvaPL(datos) {
   // dos semanas se ve igual que un día, lo que distorsiona la pendiente.
   // Un día vacío no suma ni resta, así que la curva queda plana ahí.
   const claves = Object.keys(porDia).sort();
+  if (sinFecha > 0) {
+    console.warn(`[CLV] ${sinFecha} apuesta(s) con fecha ilegible — $${plSinFecha} sumados al inicio de la curva`);
+    if (claves.length) porDia[claves[0]].pl += plSinFecha;
+  }
   let plAcum = 0, teorAcum = 0;
   const labels = [], plData = [], teorData = [], nPorPunto = [];
 
   if (claves.length) {
     const aDate = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
-    const fin = aDate(claves[claves.length - 1]);
+
+    // Llegar hasta hoy aunque no se haya resuelto nada hoy: si no, el eje
+    // termina en el último evento cerrado y el presente desaparece del
+    // gráfico. Si hay filtro "hasta", ese manda.
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const hastaInput = document.getElementById('analytics-hasta')?.value;
+    const tope = hastaInput ? new Date(hastaInput + 'T00:00:00') : hoy;
+    let fin = aDate(claves[claves.length - 1]);
+    if (tope > fin) fin = tope;
     for (let cur = aDate(claves[0]); cur <= fin; cur.setDate(cur.getDate() + 1)) {
       const k = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;
       const d = porDia[k];
