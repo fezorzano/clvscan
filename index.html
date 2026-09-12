@@ -575,7 +575,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v11/09 20:03 <span id="diag-carga"></span></div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v12/09 12:48 <span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -1290,26 +1290,50 @@ function renderCurvaPL(datos) {
     return (fa||0) - (fb||0);
   });
 
-  let plAcum = 0, teorAcum = 0;
-  const labels = [], plData = [], teorData = [];
-
+  // Un punto por DÍA, no por apuesta. Antes cada apuesta era un punto, así que
+  // la densidad del eje dependía de cuánto apostaste y no del tiempo: un fin
+  // de semana cargado ocupaba el mismo ancho que dos semanas flojas. Agrupando
+  // por día la pendiente pasa a ser comparable entre períodos.
+  const porDia = {};
   sorted.forEach(a => {
-    plAcum   += a.pl;
-    teorAcum += (parseFloat(a.ev)||0) * a.stake / 100;
     const f = parsearFechaEventoChile(a.fechaEvento);
-    const label = f
-      ? `${f.getDate()}/${f.getMonth()+1} ${String(f.getHours()).padStart(2,'0')}:${String(f.getMinutes()).padStart(2,'0')}`
-      : '?';
-    labels.push(label);
-    plData.push(Math.round(plAcum));
-    teorData.push(Math.round(teorAcum));
+    if (!f) return;
+    const k = `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,'0')}-${String(f.getDate()).padStart(2,'0')}`;
+    if (!porDia[k]) porDia[k] = { pl: 0, teor: 0, n: 0, f };
+    porDia[k].pl   += a.pl;
+    porDia[k].teor += (parseFloat(a.ev)||0) * a.stake / 100;
+    porDia[k].n    += 1;
   });
+
+  // Rellenar los días sin apuestas: sin esto el eje los omite y una pausa de
+  // dos semanas se ve igual que un día, lo que distorsiona la pendiente.
+  // Un día vacío no suma ni resta, así que la curva queda plana ahí.
+  const claves = Object.keys(porDia).sort();
+  let plAcum = 0, teorAcum = 0;
+  const labels = [], plData = [], teorData = [], nPorPunto = [];
+
+  if (claves.length) {
+    const aDate = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+    const fin = aDate(claves[claves.length - 1]);
+    for (let cur = aDate(claves[0]); cur <= fin; cur.setDate(cur.getDate() + 1)) {
+      const k = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;
+      const d = porDia[k];
+      if (d) { plAcum += d.pl; teorAcum += d.teor; }
+      labels.push(`${cur.getDate()}/${cur.getMonth()+1}`);
+      plData.push(Math.round(plAcum));
+      teorData.push(Math.round(teorAcum));
+      nPorPunto.push(d ? d.n : 0);
+    }
+  }
 
   const ctx = document.getElementById('chart-pl').getContext('2d');
 
   // Eliminar leyenda HTML manual si existe
   const prevLegend = document.getElementById('chart-pl-legend');
   if (prevLegend) prevLegend.remove();
+
+  // Guardado para el tooltip: cuántas apuestas resolvieron ese día
+  window._plNporDia = nPorPunto;
 
   charts['pl'] = new Chart(ctx, {
     type: 'line',
