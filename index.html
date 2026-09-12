@@ -575,7 +575,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v12/09 17:28 <span id="diag-carga"></span></div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v12/09 18:17 <span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -1359,6 +1359,20 @@ function renderCurvaPL(datos) {
 
   // Guardado para el tooltip: cuántas apuestas resolvieron ese día
   window._plNporDia = nPorPunto;
+
+  // Diagnóstico visible: qué ve realmente el código. Si el último día del eje
+  // no coincide con hoy, o si hoy no está entre las claves con datos, acá se
+  // ve de inmediato y sin abrir la consola.
+  try {
+    const el = document.getElementById('diag-carga');
+    if (el) {
+      const hoyK = (() => { const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
+      el.innerHTML += ` · <span style="color:${claves.indexOf(hoyK) === -1 ? '#fbbf24' : 'var(--muted)'};">`
+        + `eje ${labels[labels.length-1] || '—'} · hoy ${hoyK.slice(8)}/${Number(hoyK.slice(5,7))}`
+        + ` · dias ${labels.length} · hoy con datos: ${claves.indexOf(hoyK) === -1 ? 'NO' : 'sí'}</span>`;
+    }
+  } catch (e) {}
 
   charts['pl'] = new Chart(ctx, {
     type: 'line',
