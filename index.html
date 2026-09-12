@@ -575,7 +575,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v12/09 18:28 <span id="diag-carga"></span></div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v12/09 18:32 <span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -936,7 +936,9 @@ function setFechaAtajo(dias, el, nMeses) {
   document.querySelectorAll('#tab-analytics .filter-btn').forEach(b => b.classList.remove('active'));
   if (el) el.classList.add('active');
 
-  const hoy = new Date();
+  // Mediodía por la misma razón que en los recorridos de fechas: evita que un
+  // cambio de horario mueva el día al restar meses o días.
+  const hoy = new Date(); hoy.setHours(12, 0, 0, 0);
   const fmtChile = d => {
     const y  = d.getFullYear();
     const m  = String(d.getMonth() + 1).padStart(2, '0');
@@ -1365,29 +1367,13 @@ function renderCurvaPL(datos) {
   // Guardado para el tooltip: cuántas apuestas resolvieron ese día
   window._plNporDia = nPorPunto;
 
-  // Diagnóstico visible: qué ve realmente el código. Si el último día del eje
-  // no coincide con hoy, o si hoy no está entre las claves con datos, acá se
-  // ve de inmediato y sin abrir la consola.
-  try {
-    const el = document.getElementById('diag-carga');
-    if (el) {
-      const hoyK = (() => { const d = new Date();
-        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
-      el.innerHTML += ` · <span style="color:${claves.indexOf(hoyK) === -1 ? '#fbbf24' : 'var(--muted)'};">`
-        + `eje ${labels[labels.length-1] || '—'} · hoy ${hoyK.slice(8)}/${Number(hoyK.slice(5,7))}`
-        + ` · dias ${labels.length} · hoy con datos: ${claves.indexOf(hoyK) === -1 ? 'NO' : 'sí'}</span>`;
-    }
-  } catch (e) {}
 
   charts['pl'] = new Chart(ctx, {
     type: 'line',
     data: {
       labels,
       datasets: [
-        { label: 'P&L Real',    data: plData,   borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)',  tension: 0.3, fill: true,
-          // Punto visible solo en el extremo: marca dónde está hoy.
-          pointRadius: plData.map((_, i) => i === plData.length - 1 ? 4 : 0),
-          pointBackgroundColor: '#60a5fa', pointHoverRadius: 4 },
+        { label: 'P&L Real',    data: plData,   borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)',  tension: 0.3, fill: true, pointRadius: 0, pointHoverRadius: 4 },
         { label: 'P&L Teórico', data: teorData, borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,0.1)', tension: 0.3, fill: false, pointRadius: 0, pointHoverRadius: 4, borderDash: [4,4] }
       ]
     },
@@ -1758,17 +1744,17 @@ function renderEventos7d(datos) {
     let ini;
     if (desde) {
       const [dy, dm, dd] = desde.split('-').map(Number);
-      ini = new Date(dy, dm - 1, dd);
+      ini = new Date(dy, dm - 1, dd, 12);
     } else {
       ini = new Date(Math.min.apply(null, diasConApuesta));
-      ini = new Date(ini.getFullYear(), ini.getMonth(), ini.getDate());
+      ini = new Date(ini.getFullYear(), ini.getMonth(), ini.getDate(), 12);
     }
     let fin = new Date(Math.max.apply(null, diasConApuesta));
-    fin = new Date(fin.getFullYear(), fin.getMonth(), fin.getDate());
-    if (fin < ahoraChile) fin = new Date(ahoraChile.getFullYear(), ahoraChile.getMonth(), ahoraChile.getDate());
+    fin = new Date(fin.getFullYear(), fin.getMonth(), fin.getDate(), 12);
+    if (fin < ahoraChile) fin = new Date(ahoraChile.getFullYear(), ahoraChile.getMonth(), ahoraChile.getDate(), 12);
     if (hasta) {
       const [hy, hm, hd] = hasta.split('-').map(Number);
-      const lim = new Date(hy, hm - 1, hd);
+      const lim = new Date(hy, hm - 1, hd, 12);
       if (lim < fin) fin = lim;
     }
     // Tope de seguridad: rangos muy largos generarían cientos de barras
@@ -1802,7 +1788,10 @@ function renderEventos7d(datos) {
 
   todosDias.forEach(diaStr => {
     const [y, m, d] = diaStr.split('-').map(Number);
-    const diaDate = new Date(y, m - 1, d);
+    // Mediodía: ver el comentario del recorrido en renderCurvaPL. En Chile
+    // la medianoche del inicio del horario de verano no existe y el cursor
+    // se desplaza una hora, corriendo toda la ventana móvil.
+    const diaDate = new Date(y, m - 1, d, 12);
     let eventosVentana = new Set();
     for (let i = 0; i < 7; i++) {
       const dd = new Date(diaDate); dd.setDate(dd.getDate() - i);
