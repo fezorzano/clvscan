@@ -575,7 +575,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v12/09 18:17 <span id="diag-carga"></span></div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v12/09 18:28 <span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -1330,14 +1330,19 @@ function renderCurvaPL(datos) {
   const labels = [], plData = [], teorData = [], nPorPunto = [];
 
   if (claves.length) {
-    const aDate = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+    // Las fechas del recorrido se anclan al MEDIODÍA, no a medianoche.
+    // Chile cambia la hora el primer fin de semana de septiembre saltando de
+    // las 24:00 a la 01:00, así que la medianoche de ese día NO EXISTE: al
+    // cruzarla el cursor quedaba a las 01:00 y arrastraba esa hora, de modo
+    // que en el último día `cur <= fin` daba falso y se perdía una jornada.
+    // Al mediodía no hay salto posible y la comparación es estable.
+    const aDate = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d, 12); };
 
     // Llegar hasta hoy aunque no se haya resuelto nada hoy: si no, el eje
-    // termina en el último evento cerrado y el presente desaparece del
-    // gráfico. Si hay filtro "hasta", ese manda.
-    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    // termina en el último evento cerrado y el presente desaparece.
+    const hoy = new Date(); hoy.setHours(12, 0, 0, 0);
     const hastaInput = document.getElementById('analytics-hasta')?.value;
-    const tope = hastaInput ? new Date(hastaInput + 'T00:00:00') : hoy;
+    const tope = hastaInput ? aDate(hastaInput) : hoy;
     let fin = aDate(claves[claves.length - 1]);
     if (tope > fin) fin = tope;
     for (let cur = aDate(claves[0]); cur <= fin; cur.setDate(cur.getDate() + 1)) {
