@@ -575,7 +575,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/09 19:05 <span id="diag-carga"></span></div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/09 19:55 <span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -1491,18 +1491,27 @@ function renderBarrasOLV(datos) {
 // 3. Barras por rango de cuota
 function renderBarrasCuota(datos) {
   destroyChart('cuota');
-  // El primer tramo llega hasta 4.5 para que coincida con la cuota máxima
-  // apostable del scanner: la primera barra es lo que hoy sí se apuesta.
+  // El primer tramo llega hasta 4.5 INCLUSIVE, igual que el scanner, que
+  // apuesta con cuota <= 4.5. Antes usaba `< max` en todos los tramos, así que
+  // las cuotas de 4,50 exacto caían en la barra "4.5-6": pasaban el filtro del
+  // régimen y aparecían igual en el tramo de al lado.
   const rangos = [
-    { label: '<4.5',   min: 0,   max: 4.5 },
-    { label: '4.5-6',  min: 4.5, max: 6   },
+    { label: '≤4.5',   min: 0,   max: 4.5, maxIncl: true },
+    { label: '4.5-6',  min: 4.5, max: 6,   minExcl: true },
     { label: '6-10',   min: 6,   max: 10  },
     { label: '>10',    min: 10,  max: 999 },
   ];
 
-  const plReal  = rangos.map(r => datos.filter(a => a.coolbet >= r.min && a.coolbet < r.max).reduce((s,a) => s + a.pl, 0));
-  const plTeor  = rangos.map(r => datos.filter(a => a.coolbet >= r.min && a.coolbet < r.max).reduce((s,a) => s + (parseFloat(a.ev)||0)*a.stake/100, 0));
-  const counts  = rangos.map(r => contarEventos(datos.filter(a => a.coolbet >= r.min && a.coolbet < r.max)));
+  const enRango = (a, r) => {
+    const v = a.coolbet;
+    const bajo  = r.minExcl ? v >  r.min : v >= r.min;
+    const sobre = r.maxIncl ? v <= r.max : v <  r.max;
+    return bajo && sobre;
+  };
+
+  const plReal  = rangos.map(r => datos.filter(a => enRango(a, r)).reduce((s,a) => s + a.pl, 0));
+  const plTeor  = rangos.map(r => datos.filter(a => enRango(a, r)).reduce((s,a) => s + (parseFloat(a.ev)||0)*a.stake/100, 0));
+  const counts  = rangos.map(r => contarEventos(datos.filter(a => enRango(a, r))));
 
   const ctx3 = document.getElementById('chart-cuota').getContext('2d');
   charts['cuota'] = new Chart(ctx3, {
