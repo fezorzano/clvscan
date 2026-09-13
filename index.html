@@ -575,7 +575,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v12/09 18:32 <span id="diag-carga"></span></div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/09 17:00 <span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -813,42 +813,43 @@
     <input type="date" id="analytics-desde" style="display:none;">
     <input type="date" id="analytics-hasta" style="display:none;">
 
-    <!-- 0. Waterfall saldo -->
+    <!-- 1. Saldos -->
+    <div class="section-title">Saldos</div>
     <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
       <canvas id="chart-waterfall" height="160"></canvas>
     </div>
 
-    <!-- 1. P&L por rango de cuota -->
-    <div class="section-title">P&L por Rango de Cuota</div>
-    <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
-      <canvas id="chart-cuota" height="200"></canvas>
-    </div>
-
-    <!-- 1. Eventos por día (ventana móvil 7 días + 7 próximos) -->
-    <div class="section-title">Eventos — Ventana 7 días</div>
-    <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
-      <canvas id="chart-eventos-7d" height="200"></canvas>
-    </div>
-
-    <!-- 3. Coeficiente de variación (OLV vs ruido teórico) -->
-    <div class="section-title">Coeficiente de Variación (teórico)</div>
-    <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
-      <canvas id="chart-olv-prog" height="200"></canvas>
-    </div>
-
-    <!-- 2. Curva P&L acumulado -->
-    <div class="section-title">Curva P&L Acumulado</div>
+    <!-- 2. P&L acumulado -->
+    <div class="section-title">P&L Acumulado</div>
     <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
       <canvas id="chart-pl" height="200"></canvas>
     </div>
 
-    <!-- 3. P&L por rango de OLV -->
+    <!-- 3. Cantidad de eventos -->
+    <div class="section-title">Cantidad de Eventos</div>
+    <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <canvas id="chart-eventos-7d" height="200"></canvas>
+    </div>
+
+    <!-- 4. P&L por rango de OLV -->
     <div class="section-title">P&L por Rango OLV</div>
     <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
       <canvas id="chart-olv" height="200"></canvas>
     </div>
 
-    <!-- 5. Tabla por liga -->
+    <!-- 5. P&L por rango de cuota -->
+    <div class="section-title">P&L por Rango de Cuota</div>
+    <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <canvas id="chart-cuota" height="200"></canvas>
+    </div>
+
+    <!-- 6. Coeficiente de variación -->
+    <div class="section-title">Coeficiente de Variación (teórico)</div>
+    <div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <canvas id="chart-olv-prog" height="200"></canvas>
+    </div>
+
+    <!-- 7. Resumen por liga -->
     <div class="section-title">Resumen por Liga</div>
     <div id="tabla-liga" style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;overflow-x:auto;"></div>
 
@@ -1783,56 +1784,78 @@ function renderEventos7d(datos) {
   const hoyStr = `${ahoraChile.getFullYear()}-${String(ahoraChile.getMonth()+1).padStart(2,'0')}-${String(ahoraChile.getDate()).padStart(2,'0')}`;
 
   const labels  = [];
-  const valores = [];
-  const colores = [];
+  // Dos series, ambas en "eventos por mes" para que sean comparables contra la
+  // meta de 100. La de 7 días se amplifica x30/7: reacciona rápido pero es
+  // ruidosa. La de 30 días va sin amplificar: lenta y estable. Donde se
+  // separan, la tendencia está cambiando.
+  const serie7 = [], serie30 = [];
 
-  todosDias.forEach(diaStr => {
+  const contarVentana = (diaStr, dias) => {
     const [y, m, d] = diaStr.split('-').map(Number);
-    // Mediodía: ver el comentario del recorrido en renderCurvaPL. En Chile
-    // la medianoche del inicio del horario de verano no existe y el cursor
-    // se desplaza una hora, corriendo toda la ventana móvil.
+    // Mediodía: en Chile la medianoche del inicio del horario de verano no
+    // existe y el cursor se desplaza una hora, corriendo toda la ventana.
     const diaDate = new Date(y, m - 1, d, 12);
-    let eventosVentana = new Set();
-    for (let i = 0; i < 7; i++) {
+    const vistos = new Set();
+    for (let i = 0; i < dias; i++) {
       const dd = new Date(diaDate); dd.setDate(dd.getDate() - i);
       const key = `${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`;
-      if (porDia[key]) porDia[key].forEach(e => eventosVentana.add(e));
+      if (porDia[key]) porDia[key].forEach(e => vistos.add(e));
     }
+    return vistos.size;
+  };
+
+  todosDias.forEach(diaStr => {
     labels.push(fmtDia(diaStr));
-    valores.push(eventosVentana.size);
-    // Azul para pasados, naranja para futuros
-    colores.push(diaStr > hoyStr ? 'rgba(245,158,11,0.6)' : 'rgba(77,166,255,0.6)');
+    serie7.push(Math.round(contarVentana(diaStr, 7) * 30 / 7));
+    serie30.push(contarVentana(diaStr, 30));
   });
+
+  // El color sigue significando lo mismo que antes: azul = pasado, naranjo =
+  // futuro. Lo que distingue las dos series es el grosor, no el color.
+  // `segment` colorea cada tramo según dónde termina, así que el cambio ocurre
+  // exactamente en el día de hoy.
+  const AZUL = '#4da6ff', NARANJO = '#f59e0b';
+  let idxHoy = -1;
+  todosDias.forEach((d, i) => { if (d <= hoyStr) idxHoy = i; });
+  const segColor = ctx => (ctx.p1DataIndex > idxHoy ? NARANJO : AZUL);
 
   const ctx = document.getElementById('chart-eventos-7d').getContext('2d');
   charts['eventos-7d'] = new Chart(ctx, {
-    type: 'bar',
+    type: 'line',
     data: {
       labels,
-      datasets: [{
-        data: valores,
-        backgroundColor: colores,
-        borderColor: colores.map(c => c.replace('0.6', '1')),
-        borderWidth: 1,
-        borderRadius: 3,
-      }]
+      datasets: [
+        { label: 'Ventana 7d (×30/7) — gruesa', data: serie7,  borderColor: AZUL,
+          tension: 0.3, fill: false, pointRadius: 0, pointHoverRadius: 4, borderWidth: 3,
+          segment: { borderColor: segColor } },
+        { label: 'Ventana 30d — fina',          data: serie30, borderColor: AZUL,
+          tension: 0.3, fill: false, pointRadius: 0, pointHoverRadius: 4, borderWidth: 1.5,
+          segment: { borderColor: segColor } }
+      ]
     },
     options: {
       responsive: true,
+      interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: ctx => `${ctx.raw} eventos` } },
+        legend: { display: true, labels: {
+          color: '#94a3b8', font: { size: 10 }, usePointStyle: true, pointStyle: 'line', boxWidth: 24,
+          generateLabels: chart => chart.data.datasets.map((ds, i) => ({
+            text: ds.label, strokeStyle: AZUL, lineWidth: ds.borderWidth,
+            fontColor: '#94a3b8', datasetIndex: i, hidden: false
+          }))
+        } },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw} eventos/mes` } },
         annotation: {
           annotations: {
             meta: {
               type: 'line',
-              yMin: 23, yMax: 23,
+              yMin: 100, yMax: 100,
               borderColor: 'rgba(0,255,135,0.5)',
               borderWidth: 1.5,
               borderDash: [6, 4],
               label: {
                 display: true,
-                content: 'Meta: 23',
+                content: 'Meta: 100',
                 position: 'end',
                 yAdjust: -10,   // sube la etiqueta para que no tape la línea
                 color: 'rgba(0,255,135,0.7)',
@@ -1846,9 +1869,8 @@ function renderEventos7d(datos) {
       },
       scales: {
         x: { ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 14 }, grid: { display: false } },
-        // suggestedMax deja siempre aire sobre la línea de meta (23) para que
-        // la línea y su etiqueta se lean; si los datos la superan, el eje crece.
-        y: { ticks: { color: '#64748b', font: { size: 9 }, stepSize: 1 }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true, suggestedMax: 27 }
+        // Aire sobre la meta (100) para que la línea y su etiqueta se lean.
+        y: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true, suggestedMax: 115 }
       }
     }
   });
