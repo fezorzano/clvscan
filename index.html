@@ -575,7 +575,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/09 17:12 <span id="diag-carga"></span></div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/09 17:20 <span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -1127,10 +1127,18 @@ function renderAnalytics() {
     });
   }
 
+  // El waterfall se queda con los datos SIN filtro cruzado. Describe el estado
+  // real de la cuenta, y sus otros componentes —depósitos, retiros, stake en
+  // juego— no se pueden filtrar por cuota u OLV. Mezclar un P&L filtrado con
+  // ellos producía un "saldo actual" que nunca existió. El filtro de fechas sí
+  // se respeta: ahí el waterfall es coherente, porque el saldo inicial se
+  // calcula al inicio del período.
+  const datosSinCruce = datos;
+
   datos = filtrarCruzado(datos);
   pintarChipFiltro(datos.length);
 
-  renderWaterfall(datos);
+  renderWaterfall(datosSinCruce);
   renderCurvaPL(datos);
   renderBarrasOLV(datos);
   renderBarrasCuota(datos);
