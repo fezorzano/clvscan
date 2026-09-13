@@ -575,7 +575,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/09 17:00 <span id="diag-carga"></span></div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/09 17:07 <span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -1565,11 +1565,12 @@ function renderTablaLiga(datos) {
 function renderProgresiónOLV(datos) {
   destroyChart('olv-prog');
 
-  // Respeta el filtro cruzado: la pregunta que responde el CV es cuántos
-  // eventos faltan para que el P&L sea informativo, y eso solo tiene sentido
-  // sobre el régimen que se está midiendo. Mezclar las cuotas altas, con
-  // mucha más varianza, contamina la curva.
-  const cerradas = datos.filter(a => a.resultado !== 'pendiente');
+  // IMPORTANTE: se ignora el filtro de FECHAS a propósito. El CV es una curva
+  // de convergencia acumulada; recortarle el inicio cambiaría los números en
+  // vez de hacer zoom. El recorte por fechas se aplica más abajo, solo sobre
+  // los puntos visibles. El filtro cruzado sí se respeta, porque cambiar de
+  // régimen (cuota, OLV) sí es otra serie y debe recalcularse.
+  const cerradas = filtrarCruzado(apuestas).filter(a => a.resultado !== 'pendiente');
   const sortedApuestas = [...cerradas].sort((a, b) => {
     const fa = parsearFechaEventoChile(a.fechaEvento);
     const fb = parsearFechaEventoChile(b.fechaEvento);
@@ -1814,10 +1815,12 @@ function renderEventos7d(datos) {
   // futuro. Lo que distingue las dos series es el grosor, no el color.
   // `segment` colorea cada tramo según dónde termina, así que el cambio ocurre
   // exactamente en el día de hoy.
+  // El color deja de hacer dos trabajos. Las líneas quedan siempre azules y el
+  // futuro se marca con una banda sombreada: se lee de un vistazo incluso
+  // donde las dos series se superponen, que era el problema de antes.
   const AZUL = '#4da6ff', NARANJO = '#f59e0b';
   let idxHoy = -1;
   todosDias.forEach((d, i) => { if (d <= hoyStr) idxHoy = i; });
-  const segColor = ctx => (ctx.p1DataIndex > idxHoy ? NARANJO : AZUL);
 
   const ctx = document.getElementById('chart-eventos-7d').getContext('2d');
   charts['eventos-7d'] = new Chart(ctx, {
@@ -1825,28 +1828,38 @@ function renderEventos7d(datos) {
     data: {
       labels,
       datasets: [
-        { label: 'Ventana 7d (×30/7) — gruesa', data: serie7,  borderColor: AZUL,
-          tension: 0.3, fill: false, pointRadius: 0, pointHoverRadius: 4, borderWidth: 3,
-          segment: { borderColor: segColor } },
-        { label: 'Ventana 30d — fina',          data: serie30, borderColor: AZUL,
-          tension: 0.3, fill: false, pointRadius: 0, pointHoverRadius: 4, borderWidth: 1.5,
-          segment: { borderColor: segColor } }
+        // La de 30 días es el contexto: área rellena, borde suave.
+        { label: 'Ventana 30d', data: serie30, borderColor: 'rgba(77,166,255,0.55)',
+          backgroundColor: 'rgba(77,166,255,0.13)', tension: 0.35, fill: 'origin',
+          pointRadius: 0, pointHoverRadius: 4, borderWidth: 1.5, order: 2 },
+        // La de 7 días es el detalle: línea fina y nítida por encima.
+        { label: 'Ventana 7d (×30/7)', data: serie7, borderColor: AZUL,
+          backgroundColor: 'transparent', tension: 0.35, fill: false,
+          pointRadius: 0, pointHoverRadius: 4, borderWidth: 1.8, order: 1 }
       ]
     },
     options: {
       responsive: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { display: true, labels: {
-          color: '#94a3b8', font: { size: 10 }, usePointStyle: true, pointStyle: 'line', boxWidth: 24,
-          generateLabels: chart => chart.data.datasets.map((ds, i) => ({
-            text: ds.label, strokeStyle: AZUL, lineWidth: ds.borderWidth,
-            fontColor: '#94a3b8', datasetIndex: i, hidden: false
-          }))
-        } },
+        legend: { display: true, labels: { color: '#94a3b8', font: { size: 10 }, usePointStyle: true, pointStyle: 'line', boxWidth: 24 } },
         tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw} eventos/mes` } },
         annotation: {
           annotations: {
+            futuro: {
+              type: 'box',
+              xMin: idxHoy, xMax: todosDias.length - 1,
+              backgroundColor: 'rgba(245,158,11,0.07)',
+              borderColor: 'rgba(245,158,11,0.25)',
+              borderWidth: 0,
+              label: {
+                display: true, content: 'programado',
+                position: { x: 'center', y: 'start' },
+                color: 'rgba(245,158,11,0.75)',
+                font: { size: 9, family: 'monospace' },
+                backgroundColor: 'transparent', padding: 4,
+              }
+            },
             meta: {
               type: 'line',
               yMin: 100, yMax: 100,
