@@ -575,7 +575,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/09 17:07 <span id="diag-carga"></span></div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/09 17:12 <span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -1829,11 +1829,11 @@ function renderEventos7d(datos) {
       labels,
       datasets: [
         // La de 30 días es el contexto: área rellena, borde suave.
-        { label: 'Ventana 30d', data: serie30, borderColor: 'rgba(77,166,255,0.55)',
+        { label: '30 días', data: serie30, borderColor: 'rgba(77,166,255,0.55)',
           backgroundColor: 'rgba(77,166,255,0.13)', tension: 0.35, fill: 'origin',
           pointRadius: 0, pointHoverRadius: 4, borderWidth: 1.5, order: 2 },
         // La de 7 días es el detalle: línea fina y nítida por encima.
-        { label: 'Ventana 7d (×30/7)', data: serie7, borderColor: AZUL,
+        { label: '7 días', data: serie7, borderColor: AZUL,
           backgroundColor: 'transparent', tension: 0.35, fill: false,
           pointRadius: 0, pointHoverRadius: 4, borderWidth: 1.8, order: 1 }
       ]
@@ -1843,7 +1843,14 @@ function renderEventos7d(datos) {
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: true, labels: { color: '#94a3b8', font: { size: 10 }, usePointStyle: true, pointStyle: 'line', boxWidth: 24 } },
-        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw} eventos/mes` } },
+        // Tooltip compacto: en móvil el modo 'index' con textos largos tapaba
+        // el gráfico entero. Solo el número y la ventana.
+        tooltip: {
+          displayColors: false,
+          titleFont: { size: 10 }, bodyFont: { size: 10 },
+          padding: 6, caretSize: 4,
+          callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw}` }
+        },
         annotation: {
           annotations: {
             futuro: {
@@ -1852,13 +1859,6 @@ function renderEventos7d(datos) {
               backgroundColor: 'rgba(245,158,11,0.07)',
               borderColor: 'rgba(245,158,11,0.25)',
               borderWidth: 0,
-              label: {
-                display: true, content: 'programado',
-                position: { x: 'center', y: 'start' },
-                color: 'rgba(245,158,11,0.75)',
-                font: { size: 9, family: 'monospace' },
-                backgroundColor: 'transparent', padding: 4,
-              }
             },
             meta: {
               type: 'line',
