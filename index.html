@@ -575,7 +575,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/09 17:20 <span id="diag-carga"></span></div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/09 19:05 <span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -1874,16 +1874,8 @@ function renderEventos7d(datos) {
               borderColor: 'rgba(0,255,135,0.5)',
               borderWidth: 1.5,
               borderDash: [6, 4],
-              label: {
-                display: true,
-                content: 'Meta: 100',
-                position: 'end',
-                yAdjust: -10,   // sube la etiqueta para que no tape la línea
-                color: 'rgba(0,255,135,0.7)',
-                font: { size: 9, family: 'monospace' },
-                backgroundColor: 'transparent',
-                padding: 2,
-              }
+              // Sin etiqueta: la línea punteada verde a la altura de 100 ya se
+              // entiende como meta, y el texto ensuciaba el gráfico.
             }
           }
         }
