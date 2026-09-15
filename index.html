@@ -575,7 +575,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v13/09 19:55 <span id="diag-carga"></span></div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v15/09 18:24 <span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -2391,15 +2391,8 @@ async function cargarTodo() {
   const res  = await fetchConTimeout(`${WEB_APP_URL}?accion=obtenerTodo`);
   const resp = await res.json();
   if (!resp?.ok) throw new Error('respuesta sin ok');
-
-  if (resp.tracker) {
-    apuestas = resp.tracker.apuestas || [];
-    renderHistorial(resp.tracker.resumen);
-    renderAumentarStake(oportunidadesAumentar);
-  }
-  movimientos = resp.movimientos || [];
-  if (resp.config) cfgScanner = { ...cfgScanner, ...resp.config };
-  if (resp.tsEscaneo) ultimoTsEscaneo = resp.tsEscaneo;
+  aplicarPayload(resp);
+  guardarCache(resp);
 }
 
 // Deja a la vista cuánto tardó la carga y por qué vía. Si dice "RESPALDO"
@@ -2415,24 +2408,95 @@ function marcarDiagCarga(t0, via) {
                + seg + 's ' + via + '</span>';
 }
 
+// ══════════ CACHÉ LOCAL ══════════
+// El dashboard se quedaba en blanco mientras esperaba al servidor, y si la
+// llamada fallaba no mostraba nada. Guardar la última respuesta buena permite
+// pintar al instante y refrescar por detrás: aunque el servidor tarde 25 s o
+// no responda, se ven los datos de la última vez en lugar de una pantalla
+// vacía. No arregla la lentitud del servidor, la vuelve invisible.
+const CACHE_KEY = 'olv_payload_v1';
+
+function guardarCache(resp) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), resp }));
+  } catch (e) {}   // sin espacio o modo privado: seguir sin caché
+}
+
+function leerCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const c = JSON.parse(raw);
+    return (c && c.resp) ? c : null;
+  } catch (e) { return null; }
+}
+
+function aplicarPayload(resp) {
+  if (resp.tracker) {
+    apuestas = resp.tracker.apuestas || [];
+    renderHistorial(resp.tracker.resumen);
+    renderAumentarStake(oportunidadesAumentar);
+  }
+  movimientos = resp.movimientos || [];
+  if (resp.config) cfgScanner = { ...cfgScanner, ...resp.config };
+  if (resp.tsEscaneo) ultimoTsEscaneo = resp.tsEscaneo;
+}
+
+function marcarEstadoCache(edadMs, estado) {
+  const el = document.getElementById('diag-carga');
+  if (!el) return;
+  const min = Math.round(edadMs / 60000);
+  const edad = min < 1 ? 'recién' : min < 60 ? `hace ${min} min` : `hace ${Math.round(min/60)} h`;
+  const color = estado === 'ok' ? 'var(--muted)' : '#fbbf24';
+  el.innerHTML = ` · <span style="color:${color};">${estado === 'ok' ? '' : 'sin conexión · '}datos ${edad}</span>`;
+}
+
 async function initDashboard() {
   if (_initHecho) return;
   _initHecho = true;
   const t0 = Date.now();
   try { actualizarProximoEscaneo(); } catch(e) { console.warn('[CLV] próximo escaneo:', e.message); }
 
-  try {
-    await cargarTodo();
-    marcarDiagCarga(t0, 'única');
-    console.log(`[CLV] carga única OK en ${((Date.now()-t0)/1000).toFixed(1)}s —`,
-                apuestas.length, 'apuestas ·', movimientos.length, 'movimientos');
-  } catch(e) {
-    marcarDiagCarga(t0, 'RESPALDO ×4');
-    console.warn('[CLV] carga única falló (' + e.message + '), usando consultas separadas');
-    await Promise.allSettled([cargarTrackerDesdeSheets()]);
-    await Promise.allSettled([cargarMovimientos()]);
-    await Promise.allSettled([cargarConfig()]);
-    console.log(`[CLV] respaldo listo en ${((Date.now()-t0)/1000).toFixed(1)}s`);
+  // 1) Pintar de inmediato con lo último que se sabe
+  const cache = leerCache();
+  if (cache) {
+    try {
+      aplicarPayload(cache.resp);
+      renderAnalytics();
+      marcarEstadoCache(Date.now() - cache.ts, 'cache');
+    } catch (e) { console.warn('[CLV] caché ilegible:', e.message); }
+  }
+
+  // 2) Refrescar por detrás. Un reintento de la llamada única antes de caer al
+  //    respaldo: tres llamadas encadenadas cuestan más que repetir una.
+  let ok = false;
+  for (const ms of [15000, 25000]) {
+    try {
+      const res  = await fetchConTimeout(`${WEB_APP_URL}?accion=obtenerTodo`, ms);
+      const resp = await res.json();
+      if (!resp?.ok) throw new Error('respuesta sin ok');
+      aplicarPayload(resp);
+      guardarCache(resp);
+      ok = true;
+      marcarDiagCarga(t0, 'única');
+      break;
+    } catch (e) {
+      console.warn(`[CLV] intento ${ms}ms falló: ${e.message}`);
+    }
+  }
+
+  if (!ok) {
+    try {
+      await Promise.allSettled([cargarTrackerDesdeSheets()]);
+      await Promise.allSettled([cargarMovimientos()]);
+      await Promise.allSettled([cargarConfig()]);
+      ok = apuestas.length > 0;
+      if (ok) marcarDiagCarga(t0, 'RESPALDO');
+    } catch (e) {}
+  }
+
+  if (!ok && cache) {
+    marcarEstadoCache(Date.now() - cache.ts, 'cache');   // se queda lo cacheado
   }
 
   try { actualizarProximoEscaneo(); } catch(e) {}
