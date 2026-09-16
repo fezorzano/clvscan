@@ -11,7 +11,8 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#080c14">
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
   :root {
     --bg:        #080c14;
@@ -575,7 +576,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v15/09 18:24 <span id="diag-carga"></span></div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v16/09 07:07 <span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -860,13 +861,18 @@
 </div>
 
 <!-- Chart.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
 <script>
-// Registrar plugin datalabels pero desactivarlo globalmente — solo waterfall lo usa
-Chart.register(ChartDataLabels);
-Chart.defaults.set('plugins.datalabels', { display: false });
+// Los scripts de Chart.js van con `defer`, así que acá todavía no existen.
+// El registro se hace en initDashboard, cuando ya se ejecutaron.
+function registrarPluginsChart() {
+  try {
+    Chart.register(ChartDataLabels);
+    Chart.defaults.set('plugins.datalabels', { display: false });
+  } catch (e) { console.warn('[CLV] plugins Chart:', e.message); }
+}
 
 // ==================== ANALYTICS ====================
 let charts = {};
@@ -2455,6 +2461,16 @@ async function initDashboard() {
   if (_initHecho) return;
   _initHecho = true;
   const t0 = Date.now();
+  registrarPluginsChart();
+
+  // Tres fases medidas por separado. Hasta ahora solo medíamos el total, así
+  // que no se podía distinguir "los scripts de Chart.js tardan en bajar" de
+  // "el servidor tarda" de "dibujar los gráficos ahoga el teléfono".
+  const nav = performance.getEntriesByType('navigation')[0];
+  window._fase = {
+    carga: nav ? Math.round(nav.domContentLoadedEventEnd) : null,   // HTML + CDN + fuentes
+    fetch: null, render: null
+  };
   try { actualizarProximoEscaneo(); } catch(e) { console.warn('[CLV] próximo escaneo:', e.message); }
 
   // 1) Pintar de inmediato con lo último que se sabe
@@ -2470,6 +2486,7 @@ async function initDashboard() {
   // 2) Refrescar por detrás. Un reintento de la llamada única antes de caer al
   //    respaldo: tres llamadas encadenadas cuestan más que repetir una.
   let ok = false;
+  const tFetch = Date.now();
   for (const ms of [15000, 25000]) {
     try {
       const res  = await fetchConTimeout(`${WEB_APP_URL}?accion=obtenerTodo`, ms);
@@ -2478,7 +2495,7 @@ async function initDashboard() {
       aplicarPayload(resp);
       guardarCache(resp);
       ok = true;
-      marcarDiagCarga(t0, 'única');
+      window._fase.fetch = Date.now() - tFetch;
       break;
     } catch (e) {
       console.warn(`[CLV] intento ${ms}ms falló: ${e.message}`);
@@ -2500,7 +2517,21 @@ async function initDashboard() {
   }
 
   try { actualizarProximoEscaneo(); } catch(e) {}
+  const tRender = Date.now();
   try { renderAnalytics(); } catch(e) { console.warn('[CLV] render:', e.message); }
+  window._fase.render = Date.now() - tRender;
+  pintarFases();
+}
+
+function pintarFases() {
+  const el = document.getElementById('diag-carga'); if (!el) return;
+  const f = window._fase || {};
+  const seg = v => v == null ? '—' : (v / 1000).toFixed(1) + 's';
+  const peor = Math.max(f.carga || 0, f.fetch || 0, f.render || 0);
+  const col = v => (v === peor && peor > 4000) ? '#f87171' : 'var(--muted)';
+  el.innerHTML = ` · <span style="color:${col(f.carga)};">pág ${seg(f.carga)}</span>`
+               + ` <span style="color:${col(f.fetch)};">red ${seg(f.fetch)}</span>`
+               + ` <span style="color:${col(f.render)};">dib ${seg(f.render)}</span>`;
 }
 
 if (document.readyState === 'loading') {
