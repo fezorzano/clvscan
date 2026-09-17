@@ -68,7 +68,9 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 0 24px;
+    /* El bloque de versión pasó a dos líneas; se recorta el espacio inferior
+       para que la barra de pestañas no baje, y de hecho suba un poco. */
+    padding: 16px 0 12px;
   }
 
   .logo {
@@ -576,7 +578,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:8.5px;line-height:1.15;color:var(--muted);font-family:var(--font-mono);text-align:right;">v16/09 23:25<br><span id="diag-carga"></span></div>
+      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v16/09 23:28<br><span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -2503,7 +2505,6 @@ async function initDashboard() {
         guardarCache(resp);
         ok = true;
         window._fase.fetch = Date.now() - tFetch;
-        window._fuente = 'apps script';
       break;
     } catch (e) {
       console.warn(`[CLV] intento ${ms}ms falló: ${e.message}`);
@@ -2537,11 +2538,9 @@ function pintarFases() {
   const seg = v => v == null ? '—' : (v / 1000).toFixed(1) + 's';
   const peor = Math.max(f.carga || 0, f.fetch || 0, f.render || 0);
   const col = v => (v === peor && peor > 4000) ? '#f87171' : 'var(--muted)';
-  const fuente = window._fuente === 'apps script' ? ' <span style="color:#fbbf24;">·script</span>' : '';
   el.innerHTML = `<span style="color:${col(f.carga)};">pág ${seg(f.carga)}</span>`
                + ` <span style="color:${col(f.fetch)};">red ${seg(f.fetch)}</span>`
-               + ` <span style="color:${col(f.render)};">dib ${seg(f.render)}</span>`
-               + fuente;
+               + ` <span style="color:${col(f.render)};">dib ${seg(f.render)}</span>`;
 }
 
 if (document.readyState === 'loading') {
