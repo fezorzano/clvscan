@@ -576,7 +576,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v16/09 07:07 <span id="diag-carga"></span></div>
+      <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">v16/09 23:19 <span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -895,7 +895,14 @@ function cambiarTab(tab, el) {
 
 <script>
 // ==================== CONFIGURACIÓN ====================
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxPQQA3bSzBoGvaQviBWEiOSjKVrRx40lsChv8Js3t_Hqy-4RYRiQloy8YC36PxqcbVAw/exec";
+// Las llamadas pasan por un Worker de Cloudflare en vez de ir directo a
+// Apps Script. Motivo: /exec redirige a script.googleusercontent.com y ese
+// salto quedaba colgado desde el celular (en PC funcionaba). Con el Worker la
+// redirección ocurre entre servidores y el teléfono solo habla con un dominio.
+// La clave no es un secreto —viaja en este archivo— y solo evita que cualquiera
+// tropiece con el Worker. Se codifica porque lleva caracteres como # y &.
+const CLAVE_API   = "v7Q!m2Z#r9L@x4P$k8N^t3W&c6H*";
+const WEB_APP_URL = "https://olv-proxy.fezorzano.workers.dev/?k=" + encodeURIComponent(CLAVE_API) + "&";
 const sheetsConectado = true;
 
 // ==================== ESTADO ====================
@@ -1937,7 +1944,7 @@ async function dispararEscaneoReal() {
   mostrarToast('📡 Iniciando escaneo real...');
 
   try {
-    const res  = await fetch(`${WEB_APP_URL}?accion=dispararEscaneo`, { redirect: "follow" });
+    const res  = await fetch(`${WEB_APP_URL}accion=dispararEscaneo`, { redirect: "follow" });
     const data = await res.json();
     if (data.ok) {
       mostrarToast('✓ Escaneo iniciado — recibirás un mail con los resultados');
@@ -2024,7 +2031,7 @@ async function simularEscaneo() {
   // Asegurar que el tracker esté cargado antes de cruzar oportunidades
   if (apuestas.length === 0) {
     try {
-      const res  = await fetch(`${WEB_APP_URL}?accion=obtenerTracker`, { redirect: "follow" });
+      const res  = await fetch(`${WEB_APP_URL}accion=obtenerTracker`, { redirect: "follow" });
       const resp = await res.json();
       if (resp?.ok && resp.tracker) apuestas = resp.tracker.apuestas || [];
     } catch(e) {
@@ -2211,7 +2218,7 @@ async function llamarSheets(params) {
   if (!sheetsConectado) return null;
   try {
     const query = new URLSearchParams(params).toString();
-    const res   = await fetch(`${WEB_APP_URL}?${query}`, {
+    const res   = await fetch(`${WEB_APP_URL}${query}`, {
       redirect: "follow",
     });
     return await res.json();
@@ -2224,7 +2231,7 @@ async function llamarSheets(params) {
 async function obtenerOportunidadesSheets() {
   if (!sheetsConectado) return null;
   try {
-    const res = await fetch(`${WEB_APP_URL}?accion=obtenerOportunidades`, {
+    const res = await fetch(`${WEB_APP_URL}accion=obtenerOportunidades`, {
       redirect: "follow",
     });
     return await res.json();
@@ -2297,7 +2304,7 @@ function getCoolbetUrl(deporte) {
 // ==================== ESTADO API KEYS ====================
 async function cargarEstadoKeys() {
   try {
-    const res  = await fetch(`${WEB_APP_URL}?accion=obtenerEstadoKeys`);
+    const res  = await fetch(`${WEB_APP_URL}accion=obtenerEstadoKeys`);
     const data = await res.json();
     if (data?.ok) renderKeys(data.estado);
   } catch(e) {
@@ -2371,7 +2378,7 @@ function fmtPct(n, decimals = 1) {
 
 async function cargarMovimientos() {
   try {
-    const res  = await fetch(`${WEB_APP_URL}?accion=obtenerMovimientos`);
+    const res  = await fetch(`${WEB_APP_URL}accion=obtenerMovimientos`);
     const resp = await res.json();
     if (resp?.ok) {
       movimientos = resp.movimientos || [];
@@ -2394,7 +2401,7 @@ async function fetchConTimeout(url, ms = 25000) {
 }
 
 async function cargarTodo() {
-  const res  = await fetchConTimeout(`${WEB_APP_URL}?accion=obtenerTodo`);
+  const res  = await fetchConTimeout(`${WEB_APP_URL}accion=obtenerTodo`);
   const resp = await res.json();
   if (!resp?.ok) throw new Error('respuesta sin ok');
   aplicarPayload(resp);
@@ -2483,19 +2490,20 @@ async function initDashboard() {
     } catch (e) { console.warn('[CLV] caché ilegible:', e.message); }
   }
 
-  // 2) Refrescar por detrás. Un reintento de la llamada única antes de caer al
-  //    respaldo: tres llamadas encadenadas cuestan más que repetir una.
+  // 2) Refrescar contra el Worker. Un reintento antes de darse por vencido:
+  //    repetir una llamada cuesta menos que encadenar tres.
   let ok = false;
   const tFetch = Date.now();
   for (const ms of [15000, 25000]) {
-    try {
-      const res  = await fetchConTimeout(`${WEB_APP_URL}?accion=obtenerTodo`, ms);
-      const resp = await res.json();
-      if (!resp?.ok) throw new Error('respuesta sin ok');
-      aplicarPayload(resp);
-      guardarCache(resp);
-      ok = true;
-      window._fase.fetch = Date.now() - tFetch;
+      try {
+        const res  = await fetchConTimeout(`${WEB_APP_URL}accion=obtenerTodo`, ms);
+        const resp = await res.json();
+        if (!resp?.ok) throw new Error('respuesta sin ok');
+        aplicarPayload(resp);
+        guardarCache(resp);
+        ok = true;
+        window._fase.fetch = Date.now() - tFetch;
+        window._fuente = 'apps script';
       break;
     } catch (e) {
       console.warn(`[CLV] intento ${ms}ms falló: ${e.message}`);
@@ -2529,9 +2537,11 @@ function pintarFases() {
   const seg = v => v == null ? '—' : (v / 1000).toFixed(1) + 's';
   const peor = Math.max(f.carga || 0, f.fetch || 0, f.render || 0);
   const col = v => (v === peor && peor > 4000) ? '#f87171' : 'var(--muted)';
+  const fuente = window._fuente === 'apps script' ? ' <span style="color:#fbbf24;">·script</span>' : '';
   el.innerHTML = ` · <span style="color:${col(f.carga)};">pág ${seg(f.carga)}</span>`
                + ` <span style="color:${col(f.fetch)};">red ${seg(f.fetch)}</span>`
-               + ` <span style="color:${col(f.render)};">dib ${seg(f.render)}</span>`;
+               + ` <span style="color:${col(f.render)};">dib ${seg(f.render)}</span>`
+               + fuente;
 }
 
 if (document.readyState === 'loading') {
@@ -2548,7 +2558,7 @@ let cfgScanner = { bankroll: 700000, kellyFraccion: 0.35, topeKelly: 0.05,
 
 async function cargarConfig() {
   try {
-    const res  = await fetch(`${WEB_APP_URL}?accion=obtenerConfig`);
+    const res  = await fetch(`${WEB_APP_URL}accion=obtenerConfig`);
     const resp = await res.json();
     if (resp?.ok && resp.config) cfgScanner = { ...cfgScanner, ...resp.config };
   } catch(e) { console.warn('[CLV] config:', e.message); }
@@ -2698,7 +2708,7 @@ function precargarApuesta_aumentar(idx) {
 // ==================== TRACKER ====================
 async function cargarTrackerDesdeSheets() {
   try {
-    const res  = await fetch(`${WEB_APP_URL}?accion=obtenerTracker`);
+    const res  = await fetch(`${WEB_APP_URL}accion=obtenerTracker`);
     const resp = await res.json();
     if (resp?.ok && resp.tracker) {
       apuestas = resp.tracker.apuestas || [];
