@@ -578,7 +578,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v16/09 23:31<br><span id="diag-carga"></span></div>
+      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v18/09 23:22<br><span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -873,7 +873,7 @@ function registrarPluginsChart() {
   try {
     Chart.register(ChartDataLabels);
     Chart.defaults.set('plugins.datalabels', { display: false });
-  } catch (e) { console.warn('[CLV] plugins Chart:', e.message); }
+  } catch (e) { console.warn('[OLV] plugins Chart:', e.message); }
 }
 
 // ==================== ANALYTICS ====================
@@ -1010,10 +1010,6 @@ function setFechaAtajo(dias, el, nMeses) {
   renderAnalytics();
 }
 
-function limpiarFechas() {
-  setFechaAtajo(-1, document.getElementById('btn-fecha-todo'));
-}
-
 // El Tracker guarda una fila por APUESTA, y un mismo evento puede tener más de
 // una cuando el stake Kelly sube y se refuerza la posición. Para contar hay que
 // deduplicar por evento+fecha: si no, un partido reforzado pesa doble en los
@@ -1025,10 +1021,9 @@ function contarEventos(arr) {
 
 // ══════════ FILTROS CRUZADOS ══════════
 // Un filtro por dimensión (cuota, OLV, liga); las dimensiones se combinan con
-// Y. Así se puede pedir "cuota <4,5 Y OLV >=5%" sin permitir apilar cortes
-// infinitos sobre la misma variable.
-// En móvil pinchar una barra es poco fiable, así que los botones de arriba
-// hacen lo mismo con un área táctil decente.
+// Y. Los tres botones de arriba de los gráficos cubren los cortes de uso
+// frecuente: régimen actual (cuota ≤4,5 Y OLV ≥5%), solo cuota, y cuota alta.
+// Pinchar las barras también filtra, pero en móvil es poco fiable.
 let filtrosCruzados = {};
 
 function aplicarFiltroCruzado(f) {
@@ -1037,17 +1032,6 @@ function aplicarFiltroCruzado(f) {
   else filtrosCruzados[f.campo] = f;
   renderAnalytics();
 }
-function quitarFiltro(campo) { delete filtrosCruzados[campo]; renderAnalytics(); }
-function limpiarFiltroCruzado() { filtrosCruzados = {}; renderAnalytics(); }
-
-function presetRegimen() {
-  filtrosCruzados = {
-    coolbet: { campo:'coolbet', min:0, max:4.5,  label:'coolbet<4.5', titulo:'cuota <4,5' },
-    clv:     { campo:'clv',     min:5, max:999,  label:'clv>=5',      titulo:'OLV ≥5%' },
-  };
-  renderAnalytics();
-}
-
 function filtrarCruzado(datos) {
   return Object.keys(filtrosCruzados).reduce((d, k) => {
     const f = filtrosCruzados[k];
@@ -1086,8 +1070,8 @@ function toggleRegimen() {
   renderAnalytics();
 }
 
-// Sin mensajes: el único indicador es qué botón queda verde. Los dos son
-// excluyentes entre sí, así que nunca hay ambigüedad sobre qué está aplicado.
+// El único indicador es qué botón queda verde. Los tres son excluyentes entre
+// sí, así que nunca hay ambigüedad sobre qué filtro está aplicado.
 function pintarChipFiltro(n) {
   const c = filtrosCruzados.coolbet, o = filtrosCruzados.clv;
   const esBaja = c && c.label === 'coolbet<=4.5';
@@ -1313,7 +1297,7 @@ function renderWaterfall(datosFiltrados) {
   });
 }
 
-// 1. Curva P&L acumulado por fecha de evento
+// 1. P&L acumulado, un punto por día (fecha del evento, no de registro)
 function renderCurvaPL(datos) {
   destroyChart('pl');
   const sorted = [...datos].sort((a, b) => {
@@ -1349,7 +1333,7 @@ function renderCurvaPL(datos) {
   // Un día vacío no suma ni resta, así que la curva queda plana ahí.
   const claves = Object.keys(porDia).sort();
   if (sinFecha > 0) {
-    console.warn(`[CLV] ${sinFecha} apuesta(s) con fecha ilegible — $${plSinFecha} sumados al inicio de la curva`);
+    console.warn(`[OLV] ${sinFecha} apuesta(s) con fecha ilegible — $${plSinFecha} sumados al inicio de la curva`);
     if (claves.length) porDia[claves[0]].pl += plSinFecha;
   }
   let plAcum = 0, teorAcum = 0;
@@ -1962,17 +1946,14 @@ async function dispararEscaneoReal() {
 }
 
 // ==================== PRÓXIMO ESCANEO ====================
-const HORARIOS_POR_DIA = {
-  // Solo el de las 21 tiene el minuto fijado (nearMinute 30); los demás caen
-  // en un minuto aleatorio de su hora, así que se muestran en punto.
-  0: [7*60, 10*60, 13*60, 16*60, 19*60, 21*60+30], // Dom
-  1: [7*60, 11*60, 15*60, 19*60, 21*60+30],        // Lun
-  2: [7*60, 11*60, 15*60, 19*60, 21*60+30],        // Mar
-  3: [7*60, 11*60, 15*60, 19*60, 21*60+30],        // Mié
-  4: [7*60, 11*60, 15*60, 19*60, 21*60+30],        // Jue
-  5: [7*60, 13*60, 16*60, 19*60, 21*60+30],        // Vie
-  6: [7*60, 10*60, 13*60, 16*60, 19*60, 21*60+30], // Sáb
-};
+// Espejo de HORARIOS_ESCANEO del Apps Script. Si se cambia allá, hay que
+// cambiarlo acá: son dos copias y no hay nada que las sincronice.
+// Siete escaneos diarios, iguales todos los días (18-sep-2026), repartidos
+// uniformemente entre las 07:00 y las 21:30.
+const HORARIOS_POR_DIA = (() => {
+  const dia = [7*60, 9*60+30, 12*60, 14*60+30, 17*60, 19*60+30, 21*60+30];
+  return { 0: dia, 1: dia, 2: dia, 3: dia, 4: dia, 5: dia, 6: dia };
+})();
 
 let ultimoTsEscaneo = null; // se actualiza al cargar oportunidades
 
@@ -2480,7 +2461,7 @@ async function initDashboard() {
     carga: nav ? Math.round(nav.domContentLoadedEventEnd) : null,   // HTML + CDN + fuentes
     fetch: null, render: null
   };
-  try { actualizarProximoEscaneo(); } catch(e) { console.warn('[CLV] próximo escaneo:', e.message); }
+  try { actualizarProximoEscaneo(); } catch(e) { console.warn('[OLV] próximo escaneo:', e.message); }
 
   // 1) Pintar de inmediato con lo último que se sabe
   const cache = leerCache();
@@ -2489,7 +2470,7 @@ async function initDashboard() {
       aplicarPayload(cache.resp);
       renderAnalytics();
       marcarEstadoCache(Date.now() - cache.ts, 'cache');
-    } catch (e) { console.warn('[CLV] caché ilegible:', e.message); }
+    } catch (e) { console.warn('[OLV] caché ilegible:', e.message); }
   }
 
   // 2) Refrescar contra el Worker. Un reintento antes de darse por vencido:
@@ -2507,7 +2488,7 @@ async function initDashboard() {
         window._fase.fetch = Date.now() - tFetch;
       break;
     } catch (e) {
-      console.warn(`[CLV] intento ${ms}ms falló: ${e.message}`);
+      console.warn(`[OLV] intento ${ms}ms falló: ${e.message}`);
     }
   }
 
@@ -2527,7 +2508,7 @@ async function initDashboard() {
 
   try { actualizarProximoEscaneo(); } catch(e) {}
   const tRender = Date.now();
-  try { renderAnalytics(); } catch(e) { console.warn('[CLV] render:', e.message); }
+  try { renderAnalytics(); } catch(e) { console.warn('[OLV] render:', e.message); }
   window._fase.render = Date.now() - tRender;
   pintarFases();
 }
@@ -2560,7 +2541,7 @@ async function cargarConfig() {
     const res  = await fetch(`${WEB_APP_URL}accion=obtenerConfig`);
     const resp = await res.json();
     if (resp?.ok && resp.config) cfgScanner = { ...cfgScanner, ...resp.config };
-  } catch(e) { console.warn('[CLV] config:', e.message); }
+  } catch(e) { console.warn('[OLV] config:', e.message); }
 }
 
 // La escala de tope Kelly llega desde el Apps Script (endpoint obtenerConfig),
@@ -2648,7 +2629,7 @@ function renderAumentarStake(ops) {
         </div>
         <div>
           <div class="clv-badge" style="color:var(--yellow);">+${parseFloat(o.clv).toFixed(1)}%</div>
-          <div class="clv-label" style="color:var(--yellow);">CLV</div>
+          <div class="clv-label" style="color:var(--yellow);">OLV</div>
         </div>
       </div>
 
@@ -2800,7 +2781,7 @@ function renderHistorial(resumen) {
     <div class="apuesta-item">
       <div class="apuesta-info">
         <div class="apuesta-evento">${a.seleccion} — <span style="color:var(--blue)">${a.coolbet}</span></div>
-        <div class="apuesta-detalle">${a.evento} · CLV +${a.clv}% · $${a.stake.toLocaleString('es-CL')}</div>
+        <div class="apuesta-detalle">${a.evento} · OLV +${a.clv}% · $${a.stake.toLocaleString('es-CL')}</div>
         <div style="font-size:10px;color:var(--muted);margin-top:2px;">📅 ${a.fechaEvento}</div>
         ${a.resultado === 'pendiente' ? `
           <div style="display:flex;gap:6px;margin-top:6px;">
