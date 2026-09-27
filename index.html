@@ -578,7 +578,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v27/09 08:12<br><span id="diag-carga"></span></div>
+      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v27/09 13:33<br><span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -2552,19 +2552,21 @@ function renderParametros() {
   const c = cfgScanner;
   const n  = v => v == null ? '—' : v;
   const pc = v => v == null ? '—' : (v * 100).toFixed(v * 100 % 1 ? 1 : 0) + '%';
+  // Nombres completos y auto descriptivos: este panel se mira justo cuando algo
+  // no cuadra, y ahí una abreviatura obliga a ir a buscar qué significaba.
   const filas = [
-    ['Bankroll',        c.bankroll == null ? '—' : '$' + c.bankroll.toLocaleString('es-CL')],
-    ['Kelly fracción',  n(c.kellyFraccion)],
-    ['Tope Kelly',      pc(c.topeKelly)],
-    ['OLV mínimo',      pc(c.umbralOLV)],
-    ['OLV máx p/stake', pc(c.olvMaxSizing)],
-    ['Cuota máxima',    n(c.cuotaMax)],
-    ['Margen máximo',   c.margenMax == null ? '—' : c.margenMax + '%'],
-    ['Exposición máx',  pc(c.exposicionMax)],
-    ['Días anticipación', n(c.diasAnticip)],
-    ['Ligas',           c.ligas == null ? '—' : `${c.ligas} (${c.ligasPapel} solo papel)`],
-    ['Tenis',           n(c.modoTenis)],
-    ['Basket',          n(c.modoBasket)],
+    ['Stake actual',               c.bankroll == null ? '—' : '$' + c.bankroll.toLocaleString('es-CL')],
+    ['Fracción de Kelly',          n(c.kellyFraccion)],
+    ['Stake máximo por apuesta',   pc(c.topeKelly)],
+    ['OLV mínimo',                 pc(c.umbralOLV)],
+    ['OLV máximo para Kelly',      pc(c.olvMaxSizing)],
+    ['Cuota máxima',               n(c.cuotaMax)],
+    ['Margen máximo de Pinnacle',  c.margenMax == null ? '—' : c.margenMax + '%'],
+    ['Máximo apostado a la vez',   pc(c.exposicionMax)],
+    ['Días antes del partido',     n(c.diasAnticip)],
+    ['Competencias escaneadas',    c.ligas == null ? '—' : `${c.ligas} (${c.ligasPapel} solo papel)`],
+    ['Tenis',                      n(c.modoTenis)],
+    ['Basket',                     n(c.modoBasket)],
   ];
   const color = v => v === 'Apostar' ? 'var(--green)' : v === 'Apagado' ? 'var(--muted)' : 'var(--yellow)';
   el.innerHTML = filas.map(([k, v]) => {
