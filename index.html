@@ -578,7 +578,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v18/09 23:22<br><span id="diag-carga"></span></div>
+      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v27/09 08:12<br><span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -622,6 +622,12 @@
           Aquí verás las oportunidades<br>con OLV positivo detectadas.
         </div>
       </div>
+    </div>
+
+    <!-- Parámetros vigentes del escaneo -->
+    <div style="margin-top:16px;">
+      <div class="section-title">⚙️ Parámetros</div>
+      <div id="param-panel" style="background:var(--surface);border-radius:12px;padding:12px 14px;"></div>
     </div>
 
     <!-- Estado de API Keys -->
@@ -2434,7 +2440,7 @@ function aplicarPayload(resp) {
     renderAumentarStake(oportunidadesAumentar);
   }
   movimientos = resp.movimientos || [];
-  if (resp.config) cfgScanner = { ...cfgScanner, ...resp.config };
+  if (resp.config) { cfgScanner = { ...cfgScanner, ...resp.config }; renderParametros(); }
   if (resp.tsEscaneo) ultimoTsEscaneo = resp.tsEscaneo;
 }
 
@@ -2509,6 +2515,7 @@ async function initDashboard() {
   try { actualizarProximoEscaneo(); } catch(e) {}
   const tRender = Date.now();
   try { renderAnalytics(); } catch(e) { console.warn('[OLV] render:', e.message); }
+  try { renderParametros(); } catch(e) {}
   window._fase.render = Date.now() - tRender;
   pintarFases();
 }
@@ -2532,15 +2539,47 @@ if (document.readyState === 'loading') {
 window.addEventListener('load', initDashboard);  // red de seguridad
 // Parámetros reales del scanner. Se leen del Apps Script para no tener dos
 // fuentes de verdad; si la consulta falla se usan estos valores de respaldo.
-let cfgScanner = { bankroll: 700000, kellyFraccion: 0.35, topeKelly: 0.05,
+let cfgScanner = { bankroll: 218098, kellyFraccion: 0.65, topeKelly: 0.05,
                    umbralOLV: 0.05, cuotaMax: 4.5, diasAnticip: 7,
                    escalaTopeKelly: null };
+
+// Espejo de lo que el escaneo está usando REALMENTE, leído del Apps Script.
+// No hay valores escritos acá: si un parámetro no llega, se muestra como —
+// en vez de inventar uno, que es como nos mordió antes el bankroll de 700.000.
+function renderParametros() {
+  const el = document.getElementById('param-panel');
+  if (!el) return;
+  const c = cfgScanner;
+  const n  = v => v == null ? '—' : v;
+  const pc = v => v == null ? '—' : (v * 100).toFixed(v * 100 % 1 ? 1 : 0) + '%';
+  const filas = [
+    ['Bankroll',        c.bankroll == null ? '—' : '$' + c.bankroll.toLocaleString('es-CL')],
+    ['Kelly fracción',  n(c.kellyFraccion)],
+    ['Tope Kelly',      pc(c.topeKelly)],
+    ['OLV mínimo',      pc(c.umbralOLV)],
+    ['OLV máx p/stake', pc(c.olvMaxSizing)],
+    ['Cuota máxima',    n(c.cuotaMax)],
+    ['Margen máximo',   c.margenMax == null ? '—' : c.margenMax + '%'],
+    ['Exposición máx',  pc(c.exposicionMax)],
+    ['Días anticipación', n(c.diasAnticip)],
+    ['Ligas',           c.ligas == null ? '—' : `${c.ligas} (${c.ligasPapel} solo papel)`],
+    ['Tenis',           n(c.modoTenis)],
+    ['Basket',          n(c.modoBasket)],
+  ];
+  const color = v => v === 'Apostar' ? 'var(--green)' : v === 'Apagado' ? 'var(--muted)' : 'var(--yellow)';
+  el.innerHTML = filas.map(([k, v]) => {
+    const esModo = k === 'Tenis' || k === 'Basket';
+    return `<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px;">`
+         + `<span style="color:var(--muted);">${k}</span>`
+         + `<span style="font-family:var(--font-mono);color:${esModo ? color(v) : '#e8f0fe'};">${v}</span></div>`;
+  }).join('');
+}
 
 async function cargarConfig() {
   try {
     const res  = await fetch(`${WEB_APP_URL}accion=obtenerConfig`);
     const resp = await res.json();
-    if (resp?.ok && resp.config) cfgScanner = { ...cfgScanner, ...resp.config };
+    if (resp?.ok && resp.config) { cfgScanner = { ...cfgScanner, ...resp.config }; renderParametros(); }
   } catch(e) { console.warn('[OLV] config:', e.message); }
 }
 
