@@ -578,7 +578,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v27/09 13:33<br><span id="diag-carga"></span></div>
+      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v28/09 18:26<br><span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -2567,10 +2567,11 @@ function renderParametros() {
     ['Competencias escaneadas',    c.ligas == null ? '—' : `${c.ligas} (${c.ligasPapel} solo papel)`],
     ['Tenis',                      n(c.modoTenis)],
     ['Basket',                     n(c.modoBasket)],
+    ['Hockey',                     n(c.modoHockey)],
   ];
   const color = v => v === 'Apostar' ? 'var(--green)' : v === 'Apagado' ? 'var(--muted)' : 'var(--yellow)';
   el.innerHTML = filas.map(([k, v]) => {
-    const esModo = k === 'Tenis' || k === 'Basket';
+    const esModo = ['Tenis', 'Basket', 'Hockey'].indexOf(k) !== -1;
     return `<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px;">`
          + `<span style="color:var(--muted);">${k}</span>`
          + `<span style="font-family:var(--font-mono);color:${esModo ? color(v) : '#e8f0fe'};">${v}</span></div>`;
