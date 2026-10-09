@@ -459,6 +459,47 @@
     border-radius: 10px;
     padding: 14px;
     text-align: center;
+    position: relative;   /* ancla de .badge-max */
+  }
+
+  /* Insignia de máximo del período, en la esquina de la tarjeta de P&L Real.
+     Se enciende cuando el acumulado del período filtrado está en su punto más
+     alto. La lógica —y por qué cada condición existe— está en
+     evaluarMaximoPeriodo(). Queda dentro del borde de la tarjeta a propósito:
+     .pl-card lleva overflow:hidden y lo que sobresalga se recorta. */
+  .badge-max {
+    position: absolute;
+    top: 5px;
+    right: 6px;
+    width: 15px;
+    height: 15px;
+    display: none;
+    place-items: center;
+    color: #fbbf24;
+  }
+
+  .badge-max.on {
+    display: grid;
+    animation: badgeIn 0.45s ease-out, badgeGlow 3s ease-in-out 0.45s infinite;
+  }
+
+  .badge-max svg { width: 100%; height: 100%; display: block; }
+
+  @keyframes badgeIn {
+    0%   { opacity: 0; transform: scale(0.4) rotate(-18deg); }
+    60%  { opacity: 1; transform: scale(1.18) rotate(4deg); }
+    100% { opacity: 1; transform: scale(1)   rotate(0deg);  }
+  }
+
+  /* El latido anima solo el halo, no la geometría: repintar una sombra es
+     barato y mover el elemento obligaría a recalcular layout en cada frame. */
+  @keyframes badgeGlow {
+    0%, 100% { filter: drop-shadow(0 0 2px rgba(251,191,36,0.35)); }
+    50%      { filter: drop-shadow(0 0 6px rgba(251,191,36,0.80)); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .badge-max.on { animation: none; filter: drop-shadow(0 0 3px rgba(251,191,36,0.55)); }
   }
 
   .pl-val {
@@ -578,7 +619,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v28/09 18:26<br><span id="diag-carga"></span></div>
+      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v09/10 15:40<br><span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -760,6 +801,7 @@
       </div>
       <div class="pl-summary" style="grid-template-columns:1.2fr 1fr 1fr;flex:1;margin-bottom:0;">
         <div class="pl-card" style="min-width:0;overflow:hidden;">
+          <span class="badge-max" id="badge-max-pl"></span>
           <div class="pl-val" id="pl-total" style="color:var(--blue);font-size:clamp(13px,4vw,20px);">$0</div>
           <div class="stat-label">P&L</div>
         </div>
@@ -2569,13 +2611,11 @@ function renderParametros() {
     ['Basket',                     n(c.modoBasket)],
     ['Hockey',                     n(c.modoHockey)],
   ];
-  const color = v => v === 'Apostar' ? 'var(--green)' : v === 'Apagado' ? 'var(--muted)' : 'var(--yellow)';
-  el.innerHTML = filas.map(([k, v]) => {
-    const esModo = ['Tenis', 'Basket', 'Hockey'].indexOf(k) !== -1;
-    return `<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px;">`
-         + `<span style="color:var(--muted);">${k}</span>`
-         + `<span style="font-family:var(--font-mono);color:${esModo ? color(v) : '#e8f0fe'};">${v}</span></div>`;
-  }).join('');
+  el.innerHTML = filas.map(([k, v]) =>
+      `<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px;">`
+    + `<span style="color:var(--muted);">${k}</span>`
+    + `<span style="font-family:var(--font-mono);color:#e8f0fe;">${v}</span></div>`
+  ).join('');
 }
 
 async function cargarConfig() {
@@ -2841,6 +2881,86 @@ function renderHistorial(resumen) {
   actualizarPLSummary(resumen);
 }
 
+// ══════════ Insignia de máximo del período ══════════
+// Enciende el distintivo de la tarjeta de P&L Real cuando el acumulado del
+// período filtrado está en su punto más alto. Se recorre la MISMA serie diaria
+// que dibuja la curva de P&L —un punto por día, días vacíos rellenados, tope
+// en hoy— porque "estar en el máximo" tiene que significar exactamente lo que
+// se ve en el gráfico. Si las dos definiciones se separan, la insignia pasa a
+// contradecir la curva que está justo debajo.
+//
+// Tres condiciones, y las tres hacen falta:
+//
+//  · El último día iguala al máximo de la serie. Se compara con >= y no con >,
+//    así que un día sin apuestas resueltas no apaga la insignia: estar en el
+//    techo es un estado, no un evento de un día.
+//
+//  · El máximo es positivo. Sin esto, en la vista "Todo" —acumulado negativo—
+//    el "máximo" sería la pérdida más chica de la serie, y no hay nada que
+//    festejar ahí.
+//
+//  · La serie cubre al menos MIN_DIAS_MAXIMO días. Con un solo punto el máximo
+//    es trivialmente ese punto y la insignia se encendería siempre: ese es
+//    justo el caso de "Hoy" y "Ayer", que quedan excluidos. Se filtra por
+//    largo de la serie y no por qué botón está activo, así que un rango
+//    personalizado de un día también queda fuera.
+//
+// Medido sobre el Tracker al 3-oct, se enciende entre el 6% y el 19% de los
+// días según la vista. Rara como para significar algo, frecuente como para
+// llegar a verla.
+const MIN_DIAS_MAXIMO = 3;
+
+// Para cambiar el ícono basta mover INSIGNIA_ACTIVA.
+const INSIGNIAS_MAX = {
+  corona:   '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.6 7.4 7.5 11 12 2.6 16.5 11l4.9-3.6L19.8 18H4.2L2.6 7.4zM4.2 19.6h15.6v2H4.2v-2z"/></svg>',
+  cumbre:   '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.4 23 21.6H1L12 2.4zm0 4.9L6.1 17.6h11.8L12 7.3z"/></svg>',
+  destello: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1.2l2.4 7.4 7.4 2.4-7.4 2.4L12 20.8l-2.4-7.4L2.2 11l7.4-2.4L12 1.2z"/></svg>',
+};
+const INSIGNIA_ACTIVA = 'corona';   // 'corona' | 'cumbre' | 'destello'
+
+function evaluarMaximoPeriodo(cerradas) {
+  const el = document.getElementById('badge-max-pl');
+  if (!el) return;
+  const apagar = () => { el.classList.remove('on'); el.innerHTML = ''; el.title = ''; };
+
+  const porDia = {};
+  cerradas.forEach(a => {
+    const f = parsearFechaEventoChile(a.fechaEvento);
+    if (!f) return;
+    const k = `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,'0')}-${String(f.getDate()).padStart(2,'0')}`;
+    porDia[k] = (porDia[k] || 0) + a.pl;
+  });
+
+  const claves = Object.keys(porDia).sort();
+  if (!claves.length) { apagar(); return; }
+
+  // Mediodía, igual que en la curva: la medianoche del cambio de hora de
+  // septiembre no existe y el recorrido perdía un día al cruzarla.
+  const aDate = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d, 12); };
+  const hoy = new Date(); hoy.setHours(12, 0, 0, 0);
+  const hastaInput = document.getElementById('analytics-hasta')?.value;
+  const tope = hastaInput ? aDate(hastaInput) : hoy;
+  let fin = aDate(claves[claves.length - 1]);
+  if (tope > fin) fin = tope;
+
+  let acum = 0, maxVal = -Infinity, dias = 0;
+  for (let cur = aDate(claves[0]); cur <= fin; cur.setDate(cur.getDate() + 1)) {
+    const k = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;
+    if (porDia[k]) acum += porDia[k];
+    if (acum > maxVal) maxVal = acum;
+    dias++;
+  }
+
+  // acum quedó en el último punto de la serie, y maxVal incluye ese punto, así
+  // que acum nunca lo supera: la igualdad (con medio peso de tolerancia por el
+  // acarreo de flotantes) es lo mismo que "el último día es el máximo".
+  if (!(dias >= MIN_DIAS_MAXIMO && maxVal > 0 && acum >= maxVal - 0.5)) { apagar(); return; }
+
+  el.innerHTML = INSIGNIAS_MAX[INSIGNIA_ACTIVA] || INSIGNIAS_MAX.corona;
+  el.title = `Máximo del período: +$${Math.round(acum).toLocaleString('es-CL')} en ${dias} días`;
+  el.classList.add('on');
+}
+
 function actualizarPLSummary(resumen) {
   const BANKROLL_REFERENCIA = 1200000;
   const SALDO_INICIAL = 400000;
@@ -2980,6 +3100,10 @@ function actualizarPLSummary(resumen) {
     plEl.textContent = (plReal >= 0 ? '+$' : '-$') + Math.abs(Math.round(plReal)).toLocaleString('es-CL');
     plEl.style.color = plReal > 0 ? '#4ade80' : plReal < 0 ? '#f87171' : 'var(--blue)';
   }
+
+  // `cerradas` ya trae el filtro de fecha y el cruzado aplicados, que es
+  // justamente "el período analizado" al que se refiere la insignia.
+  evaluarMaximoPeriodo(cerradas);
 
   // Yield Real
   const yieldEl = document.getElementById('pl-yield');
