@@ -469,7 +469,10 @@
      .pl-card lleva overflow:hidden y lo que sobresalga se recorta. */
   .badge-max {
     position: absolute;
-    top: 5px;
+    /* No puede subir mucho más: con border-radius 10px, a partir de top:0 la
+       esquina redondeada empieza a recortar el ícono (la tarjeta lleva
+       overflow:hidden). A 2px todavía queda dentro de la curva. */
+    top: 2px;
     right: 6px;
     width: 15px;
     height: 15px;
@@ -619,7 +622,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v09/10 15:40<br><span id="diag-carga"></span></div>
+      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v09/10 15:58<br><span id="diag-carga"></span></div>
     </div>
   </div>
 
