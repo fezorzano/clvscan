@@ -622,7 +622,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v10/10 19:44<br><span id="diag-carga"></span></div>
+      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v10/10 20:48<br><span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -1524,11 +1524,18 @@ function renderTablaMensual(datos) {
     const f = parsearFechaEventoChile(a.fechaEvento);
     if (!f) return;
     const k = `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,'0')}`;
-    if (!porMes[k]) porMes[k] = { n: 0, stake: 0, real: 0, teor: 0, f };
-    porMes[k].n     += 1;
-    porMes[k].stake += a.stake;
-    porMes[k].real  += a.pl;
-    porMes[k].teor  += (parseFloat(a.ev) || 0) * a.stake / 100;
+    if (!porMes[k]) porMes[k] = { ev: new Set(), stake: 0, real: 0, teor: 0, olvStake: 0, f };
+    // EVENTOS únicos, no filas. El Tracker guarda una fila por apuesta y un
+    // mismo partido puede tener varias cuando se refuerza la posición: 435
+    // apuestas sobre 360 eventos. Contar filas inflaba la muestra y además
+    // contradecía la tarjeta "Eventos" de más arriba. Para juzgar si el yield
+    // de un mes significa algo, el evento es la unidad correcta: dos refuerzos
+    // sobre el mismo partido no son dos observaciones independientes.
+    porMes[k].ev.add(`${a.evento}|${a.fechaEvento}`);
+    porMes[k].stake    += a.stake;
+    porMes[k].real     += a.pl;
+    porMes[k].teor     += (parseFloat(a.ev) || 0) * a.stake / 100;
+    porMes[k].olvStake += (parseFloat(a.clv) || 0) * a.stake;
   });
 
   const claves = Object.keys(porMes).sort();
@@ -1543,6 +1550,13 @@ function renderTablaMensual(datos) {
   };
   const color = v => v > 0 ? '#4ade80' : v < 0 ? '#f87171' : 'var(--muted)';
   const pct = v => (v >= 0 ? '+' : '−') + Math.abs(v).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+  // Monto comprometido por evento, no por apuesta: si reforzaste un partido,
+  // lo que arriesgaste ahí es la suma de las dos filas. Un decimal porque la
+  // diferencia que importa —$7 mil contra $15 mil— se lee igual de bien, y
+  // los pesos exactos solo alargan la celda.
+  const porEvento = (stake, n) => n > 0
+    ? (stake / n / 1000).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+    : '—';
 
   const celda = (contenido, col, peso) =>
     `<td style="padding:4px 2px;text-align:right;color:${col};font-family:var(--font-mono);font-weight:${peso || 400};">${contenido}</td>`;
@@ -1550,39 +1564,51 @@ function renderTablaMensual(datos) {
   const filas = claves.map(k => {
     const m = porMes[k];
     const yld = m.stake > 0 ? m.real / m.stake * 100 : 0;
+    const olv = m.stake > 0 ? m.olvStake / m.stake : 0;
     return `<tr style="border-top:1px solid var(--border);">
       <td style="padding:4px 2px;color:#e8f0fe;font-family:var(--font-mono);">${MESES[m.f.getMonth()]}-${String(m.f.getFullYear()).slice(2)}</td>
-      ${celda(m.n, 'var(--muted)')}
+      ${celda(m.ev.size, 'var(--muted)')}
+      ${celda(porEvento(m.stake, m.ev.size), 'var(--muted)')}
       ${celda(miles(m.real), color(m.real), 700)}
       ${celda(miles(m.teor), '#94a3b8')}
-      ${celda(pct(yld), color(m.real))}
+      ${celda(pct(yld), color(m.real), 700)}
+      ${celda(pct(olv), '#94a3b8')}
     </tr>`;
   }).join('');
 
-  // Fila de total: es el control de cuadratura contra la tarjeta de P&L Real
-  // de arriba. Si no coinciden, uno de los dos filtros se aplicó mal.
+  // Fila de total: control de cuadratura contra las tarjetas de arriba. Real
+  // tiene que dar el P&L Real, y OLV la tarjeta OLV, con el mismo filtro
+  // puesto. Si no coinciden, un filtro se aplicó distinto en alguna de las dos.
+  const evTot = new Set();
+  claves.forEach(k => porMes[k].ev.forEach(e => evTot.add(e)));
   const tot = claves.reduce((s, k) => {
     const m = porMes[k];
-    return { n: s.n + m.n, stake: s.stake + m.stake, real: s.real + m.real, teor: s.teor + m.teor };
-  }, { n: 0, stake: 0, real: 0, teor: 0 });
+    return { stake: s.stake + m.stake, real: s.real + m.real,
+             teor: s.teor + m.teor, olvStake: s.olvStake + m.olvStake };
+  }, { stake: 0, real: 0, teor: 0, olvStake: 0 });
   const yldTot = tot.stake > 0 ? tot.real / tot.stake * 100 : 0;
+  const olvTot = tot.stake > 0 ? tot.olvStake / tot.stake : 0;
 
   el.innerHTML = `
     <table style="width:100%;border-collapse:collapse;font-size:11px;">
       <tr style="color:var(--muted);font-size:9px;letter-spacing:.5px;text-transform:uppercase;">
         <th style="padding:0 2px 5px;text-align:left;font-weight:400;">Mes</th>
-        <th style="padding:0 2px 5px;text-align:right;font-weight:400;">N</th>
+        <th style="padding:0 2px 5px;text-align:right;font-weight:400;">Ev.</th>
+        <th style="padding:0 2px 5px;text-align:right;font-weight:400;">$/Ev M$</th>
         <th style="padding:0 2px 5px;text-align:right;font-weight:400;">Real M$</th>
         <th style="padding:0 2px 5px;text-align:right;font-weight:400;">Teór. M$</th>
         <th style="padding:0 2px 5px;text-align:right;font-weight:400;">Yield</th>
+        <th style="padding:0 2px 5px;text-align:right;font-weight:400;">OLV</th>
       </tr>
       ${filas}
       <tr style="border-top:2px solid var(--border);">
         <td style="padding:5px 2px 0;color:var(--muted);font-family:var(--font-mono);font-size:10px;">TOTAL</td>
-        ${celda(tot.n, 'var(--muted)')}
+        ${celda(evTot.size, 'var(--muted)')}
+        ${celda(porEvento(tot.stake, evTot.size), 'var(--muted)')}
         ${celda(miles(tot.real), color(tot.real), 700)}
         ${celda(miles(tot.teor), '#94a3b8')}
-        ${celda(pct(yldTot), color(tot.real))}
+        ${celda(pct(yldTot), color(tot.real), 700)}
+        ${celda(pct(olvTot), '#94a3b8')}
       </tr>
     </table>`;
 }
