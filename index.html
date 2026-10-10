@@ -622,7 +622,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v10/10 12:24<br><span id="diag-carga"></span></div>
+      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v10/10 12:30<br><span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -2376,7 +2376,10 @@ function renderKeys(e) {
   if (!panel || !container) return;
   panel.style.display = 'block';
 
-  const colorGlobal = e.alcanzaTotal ? '#f8fafc' : '#f87171';
+  // La caja tenía un borde rojo cuando los créditos no alcanzaban. Se quitó
+  // para que quede igual que la de Parámetros, y no se pierde el aviso: las
+  // filas "Alcanzan (peor caso)" y "(promedio)" ya se pintan en rojo solas
+  // cuando no llegan, que es donde además se ve POR QUÉ no alcanzan.
   const alcanza = (n) => n >= e.escaneosTotalesNecesarios;
 
   // Resumen en tres líneas: lo que hace falta hasta el reset, y cuántos
@@ -2419,7 +2422,7 @@ function renderKeys(e) {
   const resetTxt = rd ? `${rd.getDate()}-${meses[rd.getMonth()]}` : '—';
 
   container.innerHTML = `
-    <div style="background:var(--surface);border:1px solid ${colorGlobal}44;border-radius:10px;padding:12px;">
+    <div style="background:var(--surface);border-radius:12px;padding:12px 14px;">
       <div style="margin-bottom:10px;">${resumen}</div>
       <div style="border-top:1px solid var(--border);padding-top:10px;">${keysHtml}</div>
       <div style="font-size:9px;color:var(--muted);margin-top:8px;font-family:var(--font-mono);">
