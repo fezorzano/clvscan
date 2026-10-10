@@ -622,7 +622,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v09/10 15:58<br><span id="diag-carga"></span></div>
+      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v10/10 12:24<br><span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -2082,6 +2082,14 @@ async function simularEscaneo() {
       resp = await obtenerOportunidadesSheets();
     }
 
+    // El panel de parámetros se refrescaba solo al cargar la página, así que
+    // después de tocar ⚙️ Config seguía mostrando los valores viejos aunque el
+    // escaneo ya estuviera usando los nuevos. La respuesta de
+    // obtenerOportunidades ahora trae la config: se aplica acá, sin pedir
+    // nada extra, y fuera del if de oportunidades para que también se
+    // actualice cuando el escaneo no encontró ninguna.
+    if (resp?.config) { cfgScanner = { ...cfgScanner, ...resp.config }; renderParametros(); }
+
     if (resp?.ok && resp.oportunidades?.length > 0) {
       // Cruzar oportunidades con apuestas pendientes del tracker
       const oportunidadesFiltradas = resp.oportunidades.map(o => {
@@ -2158,6 +2166,24 @@ function actualizarStats(ops) {
   el.textContent = ops.length === 0 ? '—' : (olv >= 0 ? '+' : '') + fmtPct(olv) + '%';
 }
 
+// Motivo por el que se sugiere reforzar una apuesta ya tomada.
+//
+// El stake extra NO sale del OLV: sale de comparar el stake Kelly de ahora con
+// lo que ya está apostado. Esas dos cosas se mueven por razones distintas, así
+// que el OLV puede haber BAJADO y la sugerencia seguir siendo válida —lo
+// habitual es que haya subido el bankroll y con él el 5% del tope por apuesta.
+//
+// La tarjeta de "apuesta adicional" no miraba el signo y escribía
+// "OLV subió -2,2pp". Las tres ramas viven acá para que las dos vistas que
+// muestran este texto no puedan volver a divergir.
+function motivoAumento(clvActual, clvOriginal) {
+  const d = parseFloat(clvActual) - parseFloat(clvOriginal);
+  if (!isFinite(d))  return '➕ Kelly actual mayor a lo apostado';
+  if (d >=  0.1)     return `📈 OLV subió ${d.toFixed(1)}pp desde tu apuesta`;
+  if (d <= -0.1)     return `📉 OLV bajó ${Math.abs(d).toFixed(1)}pp desde tu apuesta`;
+  return '➕ Kelly actual mayor a lo apostado';
+}
+
 function renderOportunidades(ops, error = false) {
   const container = document.getElementById('oportunidades-container');
 
@@ -2188,9 +2214,7 @@ function renderOportunidades(ops, error = false) {
           <div class="card-sport">${o.deporte} · ${o.fecha}</div>
           <div class="card-evento">${o.evento}</div>
           ${o.aumentar ? `<div style="font-size:10px;color:var(--yellow);margin-top:3px;">
-            📈 ${(clvPct - parseFloat(o.clvOriginal)) >= 0.1
-                  ? `OLV subió ${(clvPct - parseFloat(o.clvOriginal)).toFixed(1)}pp desde tu apuesta`
-                  : `Kelly actual mayor a lo apostado`} — falta $${(o.stakeExtra||0).toLocaleString('es-CL')}
+            ${motivoAumento(clvPct, o.clvOriginal)} — falta $${(o.stakeExtra||0).toLocaleString('es-CL')}
           </div>` : ''}
         </div>
         <div>
@@ -2595,24 +2619,45 @@ function renderParametros() {
   const el = document.getElementById('param-panel');
   if (!el) return;
   const c = cfgScanner;
-  const n  = v => v == null ? '—' : v;
-  const pc = v => v == null ? '—' : (v * 100).toFixed(v * 100 % 1 ? 1 : 0) + '%';
+
+  // Formato chileno en TODA la tabla: coma decimal, punto para los miles.
+  // Antes cada fila se formateaba por su cuenta y convivían las dos
+  // convenciones: toFixed() siempre escribe punto y la concatenación directa
+  // dejaba "4.5" y "6.5%" al lado de "$291.348".
+  const num = (v, dec) => (v == null || !isFinite(v)) ? '—'
+    : Number(v).toLocaleString('es-CL', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+
+  // Decimales solo si el número los necesita: 4,5 pero 7, no 7,0.
+  const auto = (v, maxDec) => (v == null || !isFinite(v)) ? '—'
+    : Number(v).toLocaleString('es-CL', { maximumFractionDigits: maxDec });
+
+  // Se redondea ANTES de decidir cuántos decimales mostrar: 0.05*100 da
+  // 5.000000000000001 en coma flotante, y sin el redondeo eso se imprimía
+  // como "5,0%" en vez de "5%".
+  const pc = v => {
+    if (v == null || !isFinite(v)) return '—';
+    const p = Math.round(v * 1000) / 10;
+    return num(p, p % 1 ? 1 : 0) + '%';
+  };
+
+  const txt = v => v == null ? '—' : v;
+
   // Nombres completos y auto descriptivos: este panel se mira justo cuando algo
   // no cuadra, y ahí una abreviatura obliga a ir a buscar qué significaba.
   const filas = [
-    ['Stake actual',               c.bankroll == null ? '—' : '$' + c.bankroll.toLocaleString('es-CL')],
-    ['Fracción de Kelly',          n(c.kellyFraccion)],
+    ['Stake actual',               c.bankroll == null ? '—' : '$' + num(Math.round(c.bankroll), 0)],
+    ['Fracción de Kelly',          num(c.kellyFraccion, 2)],
     ['Stake máximo por apuesta',   pc(c.topeKelly)],
     ['OLV mínimo',                 pc(c.umbralOLV)],
     ['OLV máximo para Kelly',      pc(c.olvMaxSizing)],
-    ['Cuota máxima',               n(c.cuotaMax)],
-    ['Margen máximo de Pinnacle',  c.margenMax == null ? '—' : c.margenMax + '%'],
+    ['Cuota máxima',               auto(c.cuotaMax, 2)],
+    ['Margen máximo de Pinnacle',  c.margenMax == null ? '—' : auto(c.margenMax, 2) + '%'],
     ['Máximo apostado a la vez',   pc(c.exposicionMax)],
-    ['Días antes del partido',     n(c.diasAnticip)],
-    ['Competencias escaneadas',    c.ligas == null ? '—' : `${c.ligas} (${c.ligasPapel} solo papel)`],
-    ['Tenis',                      n(c.modoTenis)],
-    ['Basket',                     n(c.modoBasket)],
-    ['Hockey',                     n(c.modoHockey)],
+    ['Días antes del partido',     auto(c.diasAnticip, 0)],
+    ['Competencias escaneadas',    c.ligas == null ? '—' : `${auto(c.ligas, 0)} (${auto(c.ligasPapel, 0)} solo papel)`],
+    ['Tenis',                      txt(c.modoTenis)],
+    ['Basket',                     txt(c.modoBasket)],
+    ['Hockey',                     txt(c.modoHockey)],
   ];
   el.innerHTML = filas.map(([k, v]) =>
       `<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px;">`
@@ -2709,7 +2754,7 @@ function renderAumentarStake(ops) {
           <div class="card-sport">${o.deporte} · ${o.fecha}</div>
           <div class="card-evento">${o.evento}</div>
           <div style="font-size:10px;color:var(--yellow);margin-top:3px;">
-            📈 OLV subió ${(parseFloat(o.clv) - parseFloat(o.clvOriginal)).toFixed(1)}pp — apuesta adicional sugerida
+            ${motivoAumento(o.clv, o.clvOriginal)} — apuesta adicional sugerida
           </div>
         </div>
         <div>
