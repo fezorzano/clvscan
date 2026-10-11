@@ -622,7 +622,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v10/10 20:48<br><span id="diag-carga"></span></div>
+      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v10/10 21:26<br><span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -1504,6 +1504,50 @@ function renderCurvaPL(datos) {
   });
 }
 
+// ══════════ Formato compartido de las tablas ══════════
+// Las dos tablas del Analytics —mes calendario y resumen por liga— usan estos
+// formateadores. Estaban escritas cada una por su lado y habían derivado a tres
+// convenciones distintas: una en Space Mono y la otra heredando DM Sans del
+// body; una con montos en miles y la otra en pesos; una con var(--green) y la
+// otra con un #4ade80 suelto. Mientras el formato viva en cada función, vuelven
+// a separarse en la próxima edición.
+//
+// Los colores salen de las variables CSS, que son el sistema declarado del
+// dashboard, no de hex sueltos.
+const T_FMT = {
+  // Miles con signo. El guion largo (−) y no el corto, porque en Space Mono
+  // tiene el mismo ancho que el +, y así las columnas no bailan entre filas
+  // positivas y negativas.
+  miles: v => {
+    const m = Math.round(v / 1000);
+    return (m > 0 ? '+' : m < 0 ? '−' : '') + Math.abs(m).toLocaleString('es-CL');
+  },
+
+  pct: v => (v >= 0 ? '+' : '−') + Math.abs(v).toLocaleString('es-CL',
+    { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%',
+
+  // Monto comprometido por evento, no por apuesta: si reforzaste un partido,
+  // lo que arriesgaste ahí es la suma de las filas. Un decimal porque la
+  // diferencia que importa —$7 mil contra $15 mil— se lee igual de bien y los
+  // pesos exactos solo alargan la celda.
+  porEvento: (stake, n) => n > 0
+    ? (stake / n / 1000).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+    : '—',
+
+  color: v => v > 0 ? 'var(--green)' : v < 0 ? 'var(--red)' : 'var(--muted)',
+
+  // Números a la derecha: así los dígitos quedan alineados por posición y las
+  // magnitudes se comparan de un vistazo. Centrados no se podía.
+  celda: (contenido, col, peso) =>
+    `<td style="padding:4px 2px;text-align:right;color:${col};font-family:var(--font-mono);font-weight:${peso || 400};">${contenido}</td>`,
+
+  th: (texto, izq) =>
+    `<th style="padding:0 2px 5px;text-align:${izq ? 'left' : 'right'};font-weight:400;">${texto}</th>`,
+
+  filaHead: celdas =>
+    `<tr style="color:var(--muted);font-size:9px;letter-spacing:.5px;text-transform:uppercase;font-family:var(--font-mono);">${celdas}</tr>`,
+};
+
 // 1b. P&L por mes calendario, en tabla.
 //
 // Es la misma serie de la curva de arriba cortada por mes, y recibe los mismos
@@ -1544,35 +1588,18 @@ function renderTablaMensual(datos) {
     return;
   }
 
-  const miles = v => {
-    const m = Math.round(v / 1000);
-    return (m > 0 ? '+' : m < 0 ? '−' : '') + Math.abs(m).toLocaleString('es-CL');
-  };
-  const color = v => v > 0 ? '#4ade80' : v < 0 ? '#f87171' : 'var(--muted)';
-  const pct = v => (v >= 0 ? '+' : '−') + Math.abs(v).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
-  // Monto comprometido por evento, no por apuesta: si reforzaste un partido,
-  // lo que arriesgaste ahí es la suma de las dos filas. Un decimal porque la
-  // diferencia que importa —$7 mil contra $15 mil— se lee igual de bien, y
-  // los pesos exactos solo alargan la celda.
-  const porEvento = (stake, n) => n > 0
-    ? (stake / n / 1000).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-    : '—';
-
-  const celda = (contenido, col, peso) =>
-    `<td style="padding:4px 2px;text-align:right;color:${col};font-family:var(--font-mono);font-weight:${peso || 400};">${contenido}</td>`;
-
   const filas = claves.map(k => {
     const m = porMes[k];
     const yld = m.stake > 0 ? m.real / m.stake * 100 : 0;
     const olv = m.stake > 0 ? m.olvStake / m.stake : 0;
     return `<tr style="border-top:1px solid var(--border);">
-      <td style="padding:4px 2px;color:#e8f0fe;font-family:var(--font-mono);">${MESES[m.f.getMonth()]}-${String(m.f.getFullYear()).slice(2)}</td>
-      ${celda(m.ev.size, 'var(--muted)')}
-      ${celda(porEvento(m.stake, m.ev.size), 'var(--muted)')}
-      ${celda(miles(m.real), color(m.real), 700)}
-      ${celda(miles(m.teor), '#94a3b8')}
-      ${celda(pct(yld), color(m.real), 700)}
-      ${celda(pct(olv), '#94a3b8')}
+      <td style="padding:4px 2px;color:var(--text);font-family:var(--font-mono);">${MESES[m.f.getMonth()]}-${String(m.f.getFullYear()).slice(2)}</td>
+      ${T_FMT.celda(m.ev.size, 'var(--muted)')}
+      ${T_FMT.celda(T_FMT.porEvento(m.stake, m.ev.size), 'var(--muted)')}
+      ${T_FMT.celda(T_FMT.miles(m.real), T_FMT.color(m.real), 700)}
+      ${T_FMT.celda(T_FMT.miles(m.teor), 'var(--text2)')}
+      ${T_FMT.celda(T_FMT.pct(yld), T_FMT.color(m.real), 700)}
+      ${T_FMT.celda(T_FMT.pct(olv), 'var(--text2)')}
     </tr>`;
   }).join('');
 
@@ -1591,24 +1618,17 @@ function renderTablaMensual(datos) {
 
   el.innerHTML = `
     <table style="width:100%;border-collapse:collapse;font-size:11px;">
-      <tr style="color:var(--muted);font-size:9px;letter-spacing:.5px;text-transform:uppercase;">
-        <th style="padding:0 2px 5px;text-align:left;font-weight:400;">Mes</th>
-        <th style="padding:0 2px 5px;text-align:right;font-weight:400;">Ev.</th>
-        <th style="padding:0 2px 5px;text-align:right;font-weight:400;">$/Ev M$</th>
-        <th style="padding:0 2px 5px;text-align:right;font-weight:400;">Real M$</th>
-        <th style="padding:0 2px 5px;text-align:right;font-weight:400;">Teór. M$</th>
-        <th style="padding:0 2px 5px;text-align:right;font-weight:400;">Yield</th>
-        <th style="padding:0 2px 5px;text-align:right;font-weight:400;">OLV</th>
-      </tr>
+      ${T_FMT.filaHead(T_FMT.th('Mes', true) + T_FMT.th('Ev.') + T_FMT.th('$/Ev M$')
+        + T_FMT.th('Real M$') + T_FMT.th('Teór. M$') + T_FMT.th('Yield') + T_FMT.th('OLV'))}
       ${filas}
       <tr style="border-top:2px solid var(--border);">
         <td style="padding:5px 2px 0;color:var(--muted);font-family:var(--font-mono);font-size:10px;">TOTAL</td>
-        ${celda(evTot.size, 'var(--muted)')}
-        ${celda(porEvento(tot.stake, evTot.size), 'var(--muted)')}
-        ${celda(miles(tot.real), color(tot.real), 700)}
-        ${celda(miles(tot.teor), '#94a3b8')}
-        ${celda(pct(yldTot), color(tot.real), 700)}
-        ${celda(pct(olvTot), '#94a3b8')}
+        ${T_FMT.celda(evTot.size, 'var(--muted)')}
+        ${T_FMT.celda(T_FMT.porEvento(tot.stake, evTot.size), 'var(--muted)')}
+        ${T_FMT.celda(T_FMT.miles(tot.real), T_FMT.color(tot.real), 700)}
+        ${T_FMT.celda(T_FMT.miles(tot.teor), 'var(--text2)')}
+        ${T_FMT.celda(T_FMT.pct(yldTot), T_FMT.color(tot.real), 700)}
+        ${T_FMT.celda(T_FMT.pct(olvTot), 'var(--text2)')}
       </tr>
     </table>`;
 }
@@ -1721,23 +1741,39 @@ function renderTablaLiga(datos) {
     .map(([liga, d]) => ({ liga, ...d, eventos: d.eventos.size, olv: d.volumen > 0 ? d.olvSum / d.volumen : 0 }))
     .sort((a, b) => b.plReal - a.plReal);
 
+  // Mismo formato que la tabla de mes calendario, vía T_FMT. Antes esta tabla
+  // era la única del dashboard sin mono, con los números centrados en vez de
+  // alineados a la derecha, los montos en pesos en lugar de miles, y el signo
+  // "+" escrito a mano en OLV y Teórico — que imprimía "+$-5.000" en cuanto
+  // alguno daba negativo.
+  const tot = rows.reduce((s, r) => ({
+    eventos: s.eventos + r.eventos, volumen: s.volumen + r.volumen,
+    plReal: s.plReal + r.plReal, plTeor: s.plTeor + r.plTeor, olvSum: s.olvSum + r.olvSum,
+  }), { eventos: 0, volumen: 0, plReal: 0, plTeor: 0, olvSum: 0 });
+  const yld = d => d.volumen > 0 ? d.plReal / d.volumen * 100 : 0;
+  const olvDe = d => d.volumen > 0 ? d.olvSum / d.volumen : 0;
+
   const html = `
     <table style="width:100%;font-size:11px;border-collapse:collapse;">
-      <tr style="color:var(--muted);border-bottom:1px solid var(--border);">
-        <th style="text-align:left;padding:6px 4px;">Liga</th>
-        <th style="padding:6px 4px;">#</th>
-        <th style="padding:6px 4px;">OLV</th>
-        <th style="padding:6px 4px;">P&L Real</th>
-        <th style="padding:6px 4px;">P&L Teórico</th>
-      </tr>
+      ${T_FMT.filaHead(T_FMT.th('Liga', true) + T_FMT.th('Ev.')
+        + T_FMT.th('Real M$') + T_FMT.th('Teór. M$') + T_FMT.th('Yield') + T_FMT.th('OLV'))}
       ${rows.map(r => `
-        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-          <td style="padding:6px 4px;color:var(--text2);font-size:10px;">${r.liga.replace(/⚽/g,'').trim()}</td>
-          <td style="padding:6px 4px;text-align:center;color:var(--muted);">${r.eventos}</td>
-          <td style="padding:6px 4px;text-align:center;color:var(--green);">+${r.olv.toFixed(1).replace('.',',')}%</td>
-          <td style="padding:6px 4px;text-align:center;color:${r.plReal >= 0 ? 'var(--green)' : 'var(--red)'};">${r.plReal >= 0 ? '+' : ''}$${Math.round(r.plReal).toLocaleString('es-CL')}</td>
-          <td style="padding:6px 4px;text-align:center;color:#94a3b8;">+$${Math.round(r.plTeor).toLocaleString('es-CL')}</td>
+        <tr style="border-top:1px solid var(--border);">
+          <td style="padding:4px 2px;color:var(--text2);font-size:10px;">${r.liga.replace(/⚽/g,'').trim()}</td>
+          ${T_FMT.celda(r.eventos, 'var(--muted)')}
+          ${T_FMT.celda(T_FMT.miles(r.plReal), T_FMT.color(r.plReal), 700)}
+          ${T_FMT.celda(T_FMT.miles(r.plTeor), 'var(--text2)')}
+          ${T_FMT.celda(T_FMT.pct(yld(r)), T_FMT.color(r.plReal), 700)}
+          ${T_FMT.celda(T_FMT.pct(olvDe(r)), 'var(--text2)')}
         </tr>`).join('')}
+      <tr style="border-top:2px solid var(--border);">
+        <td style="padding:5px 2px 0;color:var(--muted);font-family:var(--font-mono);font-size:10px;">TOTAL</td>
+        ${T_FMT.celda(tot.eventos, 'var(--muted)')}
+        ${T_FMT.celda(T_FMT.miles(tot.plReal), T_FMT.color(tot.plReal), 700)}
+        ${T_FMT.celda(T_FMT.miles(tot.plTeor), 'var(--text2)')}
+        ${T_FMT.celda(T_FMT.pct(yld(tot)), T_FMT.color(tot.plReal), 700)}
+        ${T_FMT.celda(T_FMT.pct(olvDe(tot)), 'var(--text2)')}
+      </tr>
     </table>`;
 
   document.getElementById('tabla-liga').innerHTML = html;
