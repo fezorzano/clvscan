@@ -622,7 +622,7 @@
           <span id="scanRealIcon">📡</span> NUEVO
         </button>
       </div>
-      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v10/10 21:26<br><span id="diag-carga"></span></div>
+      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v10/10 21:32<br><span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -1725,54 +1725,45 @@ function renderBarrasCuota(datos) {
 }
 
 // 4. Tabla por liga
+// Solo plata: la liga es el corte más largo del dashboard —hay decenas— y con
+// seis columnas la tabla pesaba más de lo que informaba. Los porcentajes se
+// sacaron a propósito; el yield por liga además engaña, porque con 6 eventos
+// da +222% y eso es una liga con suerte, no una liga buena. Para la lectura
+// normalizada está la tabla de mes calendario, que sí tiene Yield y OLV.
 function renderTablaLiga(datos) {
   const ligas = {};
   datos.forEach(a => {
     const liga = a.deporte || 'Otros';
-    if (!ligas[liga]) ligas[liga] = { eventos: new Set(), volumen: 0, plReal: 0, plTeor: 0, olvSum: 0 };
+    if (!ligas[liga]) ligas[liga] = { eventos: new Set(), plReal: 0, plTeor: 0 };
     ligas[liga].eventos.add(`${a.evento}|${a.fechaEvento}`);
-    ligas[liga].volumen += a.stake;
-    ligas[liga].plReal  += a.pl;
-    ligas[liga].plTeor  += (parseFloat(a.ev)||0) * a.stake / 100;
-    ligas[liga].olvSum  += (parseFloat(a.clv)||0) * a.stake;
+    ligas[liga].plReal += a.pl;
+    ligas[liga].plTeor += (parseFloat(a.ev)||0) * a.stake / 100;
   });
 
   const rows = Object.entries(ligas)
-    .map(([liga, d]) => ({ liga, ...d, eventos: d.eventos.size, olv: d.volumen > 0 ? d.olvSum / d.volumen : 0 }))
+    .map(([liga, d]) => ({ liga, ...d, eventos: d.eventos.size }))
     .sort((a, b) => b.plReal - a.plReal);
 
-  // Mismo formato que la tabla de mes calendario, vía T_FMT. Antes esta tabla
-  // era la única del dashboard sin mono, con los números centrados en vez de
-  // alineados a la derecha, los montos en pesos en lugar de miles, y el signo
-  // "+" escrito a mano en OLV y Teórico — que imprimía "+$-5.000" en cuanto
-  // alguno daba negativo.
   const tot = rows.reduce((s, r) => ({
-    eventos: s.eventos + r.eventos, volumen: s.volumen + r.volumen,
-    plReal: s.plReal + r.plReal, plTeor: s.plTeor + r.plTeor, olvSum: s.olvSum + r.olvSum,
-  }), { eventos: 0, volumen: 0, plReal: 0, plTeor: 0, olvSum: 0 });
-  const yld = d => d.volumen > 0 ? d.plReal / d.volumen * 100 : 0;
-  const olvDe = d => d.volumen > 0 ? d.olvSum / d.volumen : 0;
+    eventos: s.eventos + r.eventos, plReal: s.plReal + r.plReal, plTeor: s.plTeor + r.plTeor,
+  }), { eventos: 0, plReal: 0, plTeor: 0 });
 
   const html = `
     <table style="width:100%;font-size:11px;border-collapse:collapse;">
       ${T_FMT.filaHead(T_FMT.th('Liga', true) + T_FMT.th('Ev.')
-        + T_FMT.th('Real M$') + T_FMT.th('Teór. M$') + T_FMT.th('Yield') + T_FMT.th('OLV'))}
+        + T_FMT.th('Real M$') + T_FMT.th('Teór. M$'))}
       ${rows.map(r => `
         <tr style="border-top:1px solid var(--border);">
           <td style="padding:4px 2px;color:var(--text2);font-size:10px;">${r.liga.replace(/⚽/g,'').trim()}</td>
           ${T_FMT.celda(r.eventos, 'var(--muted)')}
           ${T_FMT.celda(T_FMT.miles(r.plReal), T_FMT.color(r.plReal), 700)}
           ${T_FMT.celda(T_FMT.miles(r.plTeor), 'var(--text2)')}
-          ${T_FMT.celda(T_FMT.pct(yld(r)), T_FMT.color(r.plReal), 700)}
-          ${T_FMT.celda(T_FMT.pct(olvDe(r)), 'var(--text2)')}
         </tr>`).join('')}
       <tr style="border-top:2px solid var(--border);">
         <td style="padding:5px 2px 0;color:var(--muted);font-family:var(--font-mono);font-size:10px;">TOTAL</td>
         ${T_FMT.celda(tot.eventos, 'var(--muted)')}
         ${T_FMT.celda(T_FMT.miles(tot.plReal), T_FMT.color(tot.plReal), 700)}
         ${T_FMT.celda(T_FMT.miles(tot.plTeor), 'var(--text2)')}
-        ${T_FMT.celda(T_FMT.pct(yld(tot)), T_FMT.color(tot.plReal), 700)}
-        ${T_FMT.celda(T_FMT.pct(olvDe(tot)), 'var(--text2)')}
       </tr>
     </table>`;
 
