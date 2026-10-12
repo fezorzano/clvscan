@@ -622,7 +622,7 @@
           <span id="scanRealIcon">📡</span> NUEVO<span id="scanRealTiempo" style="opacity:.7;font-variant-numeric:tabular-nums"></span>
         </button>
       </div>
-      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v11/10 11:06<br><span id="diag-carga"></span></div>
+      <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v12/10 18:58<br><span id="diag-carga"></span></div>
     </div>
   </div>
 
@@ -2151,7 +2151,7 @@ async function dispararEscaneoReal() {
     const et = document.getElementById('scanRealTiempo');
     if (et) et.textContent = ` ${s}s`;
   }, 1000);
-  mostrarToast('📡 Escaneando… puede tardar 90 segundos');
+  mostrarToast(`📡 Escaneando… ${dura}`);
 
   try {
     // Sin timeout a propósito: cortar a los 25s como el resto de las consultas
@@ -2175,7 +2175,7 @@ async function dispararEscaneoReal() {
   } finally {
     clearInterval(reloj);
     btn.disabled = false;
-    btn.title = 'Genera un nuevo escaneo real (~90s)';
+    btn.title = `Genera un nuevo escaneo real (${dura})`;
     icon.textContent = '📡';
     const et = document.getElementById('scanRealTiempo');
     if (et) et.textContent = '';
