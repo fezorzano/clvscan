@@ -618,8 +618,8 @@
         <button class="scan-btn" id="scanBtn" onclick="simularEscaneo()">
           <span id="scanIcon">⟳</span> SCAN
         </button>
-        <button class="scan-btn" id="scanRealBtn" onclick="dispararEscaneoReal()" style="background:rgba(96,165,250,0.1);border-color:rgba(96,165,250,0.3);" title="Genera un nuevo escaneo real (2-3 min)">
-          <span id="scanRealIcon">📡</span> NUEVO
+        <button class="scan-btn" id="scanRealBtn" onclick="dispararEscaneoReal()" style="background:rgba(96,165,250,0.1);border-color:rgba(96,165,250,0.3);" title="Genera un nuevo escaneo real (~90s)">
+          <span id="scanRealIcon">📡</span> NUEVO<span id="scanRealTiempo" style="opacity:.7;font-variant-numeric:tabular-nums"></span>
         </button>
       </div>
       <div style="font-size:8.5px;line-height:1.5;color:var(--muted);font-family:var(--font-mono);text-align:right;">v11/10 11:06<br><span id="diag-carga"></span></div>
@@ -2115,29 +2115,70 @@ function chartOpts(unit) {
 }
 
 // ==================== ESCANEO REAL ====================
+// El escaneo corre SINCRÓNICO en el Web App y la respuesta trae el resultado.
+// Antes se encolaba un trigger: el botón volvía al instante pero el escaneo
+// arrancaba minutos después, porque la granularidad mínima de un trigger
+// temporal de Apps Script es un minuto y Google además aleatoriza y encola.
+// Ahora la espera es real pero visible: ~90 segundos con contador.
 async function dispararEscaneoReal() {
-  const confirmado = confirm("¿Iniciar un nuevo escaneo real?\n\nEsto consumirá ~50 requests de API y tardará ~2 minutos. Recibirás un mail con los resultados.");
+  // Costo y duración salen de la mediana de los últimos 5 escaneos reales, no
+  // de un número escrito acá. Importa cuando cambia el régimen: al encender
+  // el mercado de totales el costo se duplicó de un escaneo al siguiente.
+  // Si todavía no hay historia, no se inventa una cifra.
+  const cred = _estadoKeys?.CRED_RECIENTE;
+  const seg  = _estadoKeys?.SEG_RECIENTE;
+  const costo = cred ? `~${cred} créditos de API` : 'créditos de API';
+  const dura  = seg
+    ? (seg >= 90 ? `unos ${Math.round(seg/30)*30} segundos` : `unos ${Math.round(seg/10)*10} segundos`)
+    : 'entre 1 y 2 minutos';
+  const confirmado = confirm(
+    `¿Iniciar un nuevo escaneo real?\n\nConsume ${costo} y tarda ${dura}.` +
+    (cred ? `\n(medido sobre los últimos ${_estadoKeys.RECIENTE_N} escaneos)` : '') +
+    `\n\nNo cierres la pestaña: el resultado llega en esta misma pantalla.`);
   if (!confirmado) return;
 
   const btn  = document.getElementById('scanRealBtn');
   const icon = document.getElementById('scanRealIcon');
   btn.disabled = true;
-  icon.textContent = '⏳';
-  mostrarToast('📡 Iniciando escaneo real...');
+
+  // Contador en el propio botón: sin esto, 90 segundos sin señal se leen como
+  // "se colgó" y la reacción natural es recargar la página a mitad de camino.
+  const t0 = Date.now();
+  const reloj = setInterval(() => {
+    const s = Math.round((Date.now() - t0) / 1000);
+    icon.textContent = '⏳';
+    btn.title = `Escaneando… ${s}s`;
+    const et = document.getElementById('scanRealTiempo');
+    if (et) et.textContent = ` ${s}s`;
+  }, 1000);
+  mostrarToast('📡 Escaneando… puede tardar 90 segundos');
 
   try {
+    // Sin timeout a propósito: cortar a los 25s como el resto de las consultas
+    // abortaría un escaneo que va bien. El tope real lo pone Apps Script a los
+    // 6 minutos.
     const res  = await fetch(`${WEB_APP_URL}accion=dispararEscaneo`, { redirect: "follow" });
     const data = await res.json();
     if (data.ok) {
-      mostrarToast('✓ Escaneo iniciado — recibirás un mail con los resultados');
+      const p = [];
+      if (data.oportunidades != null) p.push(`${data.oportunidades} oportunidad(es)`);
+      if (data.papel != null)         p.push(`${data.papel} a papel`);
+      if (data.creditos != null)      p.push(`${data.creditos} créditos`);
+      mostrarToast(`✓ Escaneo listo en ${data.segundos}s — ${p.join(' · ')}`);
+      // Refrescar en pantalla lo que el escaneo acaba de producir.
+      try { await cargarTodo(); } catch(e) { location.reload(); }
     } else {
-      mostrarToast('⚠ Error al iniciar escaneo');
+      mostrarToast(`⚠ ${data.motivo || 'Error al escanear'}`);
     }
   } catch(e) {
-    mostrarToast('⚠ Error de conexión');
+    mostrarToast('⚠ Se perdió la conexión — revisa el Log API, el escaneo pudo completarse igual');
   } finally {
+    clearInterval(reloj);
     btn.disabled = false;
+    btn.title = 'Genera un nuevo escaneo real (~90s)';
     icon.textContent = '📡';
+    const et = document.getElementById('scanRealTiempo');
+    if (et) et.textContent = '';
   }
 }
 
@@ -2505,11 +2546,16 @@ function getCoolbetUrl(deporte) {
 }
 
 // ==================== ESTADO API KEYS ====================
+// Se guarda el estado además de pintarlo: el botón de escaneo lo necesita
+// para decir cuánto va a costar y cuánto va a tardar con números medidos, no
+// pegados a mano.
+let _estadoKeys = null;
+
 async function cargarEstadoKeys() {
   try {
     const res  = await fetch(`${WEB_APP_URL}accion=obtenerEstadoKeys`);
     const data = await res.json();
-    if (data?.ok) renderKeys(data.estado);
+    if (data?.ok) { _estadoKeys = data.estado; renderKeys(data.estado); }
   } catch(e) {
     console.warn("Error cargando estado keys:", e.message);
   }
